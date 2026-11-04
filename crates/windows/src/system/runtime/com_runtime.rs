@@ -105,8 +105,34 @@ fn initialize_owned_process_apartment() -> Result<ComApartment, AdapterError> {
             )
         })?;
     dpi::ensure_per_monitor_v2()?;
+    ensure_default_desktop();
     Ok(apartment)
 }
+
+#[cfg(target_os = "windows")]
+pub fn ensure_default_desktop() {
+    #[link(name = "user32")]
+    unsafe extern "system" {
+        fn OpenDesktopA(
+            lpszDesktop: *const u8,
+            dwFlags: u32,
+            fInherit: i32,
+            dwDesiredAccess: u32,
+        ) -> *mut core::ffi::c_void;
+
+        fn SetThreadDesktop(hDesktop: *mut core::ffi::c_void) -> i32;
+    }
+
+    let desktop = unsafe { OpenDesktopA(b"default\0".as_ptr(), 0, 0, 0x01FF) };
+    if !desktop.is_null() {
+        unsafe {
+            let _ = SetThreadDesktop(desktop);
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn ensure_default_desktop() {}
 
 fn initialize_hosted_library_apartment() -> Result<RetainedMtaCookieAddress, AdapterError> {
     #[cfg(test)]

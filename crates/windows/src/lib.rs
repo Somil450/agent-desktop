@@ -13,7 +13,7 @@ pub use system::private_file::WindowsPrivateFile;
 #[cfg(target_os = "windows")]
 pub use system::runtime::com_runtime::bootstrap_hosted_library;
 pub use system::runtime::com_runtime::{
-    ensure_hosted_library_mta_and_dpi, ensure_owned_process_mta_and_dpi,
+    ensure_default_desktop, ensure_hosted_library_mta_and_dpi, ensure_owned_process_mta_and_dpi,
     is_mta_established_for_new_threads,
 };
 

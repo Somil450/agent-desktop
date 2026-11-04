@@ -25,6 +25,9 @@ pub struct WindowsAdapter {
 
 impl WindowsAdapter {
     pub fn new() -> Self {
+        #[cfg(target_os = "windows")]
+        crate::system::runtime::com_runtime::ensure_default_desktop();
+
         Self {
             renderer_activation_attempted: Mutex::new(HashSet::new()),
         }

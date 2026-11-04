@@ -32,6 +32,9 @@ use std::process::ExitCode;
 const EXIT_INVALID_ARGS: u8 = 2;
 
 fn main() -> ExitCode {
+    #[cfg(target_os = "windows")]
+    agent_desktop_windows::ensure_default_desktop();
+
     let code = run_command();
     #[cfg(target_os = "linux")]
     agent_desktop_linux::end_input_session();

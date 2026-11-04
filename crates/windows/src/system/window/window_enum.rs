@@ -88,8 +88,10 @@ pub(crate) fn enumerate_top_level(
         keep_going
     });
     let parameter = (&mut boxed as *mut Box<dyn FnMut(EnumeratedWindow) -> bool>) as isize;
+    unsafe { windows_sys::Win32::Foundation::SetLastError(0) };
     let succeeded = unsafe { EnumWindows(Some(callback), parameter) };
-    if succeeded == 0 && !stopped_early.get() {
+    let last_err = unsafe { windows_sys::Win32::Foundation::GetLastError() };
+    if succeeded == 0 && !stopped_early.get() && last_err != 0 {
         return Err(AdapterError::internal(
             "EnumWindows failed to enumerate top-level windows",
         ));
