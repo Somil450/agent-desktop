@@ -40,7 +40,7 @@ class TestContextFlow(unittest.TestCase):
 
         # Step 3: Now send hello in this chat
         res3 = self.brain.plan_and_execute("now send hello in this chat", self.mock_controller)
-        self.mock_controller.open_whatsapp_chat.assert_called_with("papa", "hello")
+        self.mock_controller.send_whatsapp_message_in_active_chat.assert_called_with("hello")
 
     def test_whatsapp_one_go_composite(self):
         """
@@ -94,3 +94,4 @@ class TestContextFlow(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

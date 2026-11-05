@@ -320,10 +320,10 @@ class JarvisBrain:
         if m_send_this and ("chat" in clean or self.active_chat or self.active_app == "whatsapp"):
             raw_msg = m_send_this.group(1).strip()
             msg = re.sub(r'\s+(?:in|to)\s+(?:this\s+)?chat$', '', raw_msg).strip()
-            if self.active_chat:
-                return controller.open_whatsapp_chat(self.active_chat, msg)
-            elif self.active_app == "whatsapp":
+            if self.active_app == "whatsapp" or "chat" in clean:
                 return controller.send_whatsapp_message_in_active_chat(msg)
+            elif self.active_chat:
+                return controller.open_whatsapp_chat(self.active_chat, msg)
             else:
                 return controller.type_text(msg, press_enter=True)
 

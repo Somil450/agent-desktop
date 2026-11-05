@@ -529,18 +529,63 @@ class SystemController:
     # -------------------------------------------------------------
     # 4. WHATSAPP CHAT & SCREENSHOT AUTOMATION
     # -------------------------------------------------------------
+    def focus_whatsapp_input_box(self) -> bool:
+        """
+        Ensures the cursor is actively focused inside the WhatsApp 'Type a message' input box:
+        1. Brings WhatsApp to the foreground.
+        2. Tries to visually locate 'Type a message' placeholder via OCR and clicks it.
+        3. Falls back to calculating the input box coordinates based on WhatsApp window bounds.
+        """
+        ensure_default_desktop()
+        self.focus_window_by_name("WhatsApp")
+        time.sleep(0.4)
+
+        # 1. Visual OCR lookup for 'Type a message'
+        if self.visual_computer:
+            target = self.visual_computer.find_text_on_screen("Type a message")
+            if target:
+                pyautogui.moveTo(target["x"], target["y"], duration=0.2)
+                pyautogui.click()
+                time.sleep(0.2)
+                return True
+
+        # 2. Geometric fallback from WhatsApp window bounds
+        windows = self.list_windows()
+        for w in windows:
+            if "whatsapp" in w.get("app_name", "").lower() or "whatsapp" in w.get("title", "").lower():
+                b = w.get("bounds", {})
+                if b and b.get("width", 0) > 200:
+                    bx = b.get("x", 0)
+                    by = b.get("y", 0)
+                    bw = b.get("width", 0)
+                    bh = b.get("height", 0)
+                    # WhatsApp message input is centered in the right chat panel ~45px from bottom
+                    click_x = int(bx + bw * 0.60)
+                    click_y = int(by + bh - 45)
+                    pyautogui.moveTo(click_x, click_y, duration=0.2)
+                    pyautogui.click()
+                    time.sleep(0.2)
+                    return True
+
+        # 3. Primary screen fallback
+        screen_w, screen_h = pyautogui.size()
+        pyautogui.moveTo(int(screen_w * 0.60), int(screen_h * 0.85), duration=0.2)
+        pyautogui.click()
+        time.sleep(0.2)
+        return True
+
     def open_whatsapp_chat(self, contact_name: str, message: str = None) -> str:
         """Opens a specific contact chat in WhatsApp Desktop and optionally sends a message."""
         ensure_default_desktop()
         try:
             # 1. Bring WhatsApp to front
             subprocess.Popen("start whatsapp:", shell=True)
-            time.sleep(1.2)
+            time.sleep(1.0)
             self.focus_window_by_name("WhatsApp")
-            time.sleep(0.6)
+            time.sleep(0.5)
 
             pyautogui.press('esc')
-            time.sleep(0.3)
+            time.sleep(0.2)
 
             # Determine search candidate terms (including phonetic aliases)
             target = contact_name.strip()
@@ -559,7 +604,7 @@ class SystemController:
             for candidate in candidates:
                 # Open search
                 pyautogui.hotkey('ctrl', 'f')
-                time.sleep(0.4)
+                time.sleep(0.3)
 
                 # Clear any existing text
                 pyautogui.hotkey('ctrl', 'a')
@@ -569,28 +614,29 @@ class SystemController:
 
                 # Type candidate name slowly so WhatsApp registers it
                 pyautogui.write(candidate, interval=0.07)
-                time.sleep(1.5)  # Wait for WhatsApp search results to populate
+                time.sleep(1.2)  # Wait for WhatsApp search results to populate
 
                 # Press Down to highlight first result, then Enter to open
                 pyautogui.press('down')
-                time.sleep(0.4)
+                time.sleep(0.3)
                 pyautogui.press('enter')
-                time.sleep(0.8)
+                time.sleep(0.6)
 
                 # Press Escape to dismiss search bar if still open
                 pyautogui.press('esc')
-                time.sleep(0.3)
+                time.sleep(0.2)
                 opened = True
                 break
 
             if not opened:
                 return f"Could not open WhatsApp chat for {contact_name}, sir."
 
-            # 2. Click on the message input box to ensure focus
-            time.sleep(0.5)
+            # 2. Guarantee focus inside the message input box by clicking it
+            self.focus_whatsapp_input_box()
+            time.sleep(0.3)
+
             # Send message if provided
             if message:
-                # Click the message input area (bottom of WhatsApp)
                 pyperclip.copy(message)
                 pyautogui.hotkey('ctrl', 'v')
                 time.sleep(0.4)
@@ -766,12 +812,13 @@ class SystemController:
     def send_whatsapp_message_in_active_chat(self, message: str) -> str:
         """Sends a message directly into the currently active WhatsApp chat."""
         ensure_default_desktop()
-        self.focus_window_by_name("WhatsApp")
+        self.focus_whatsapp_input_box()
         time.sleep(0.3)
         pyperclip.copy(message)
         pyautogui.hotkey('ctrl', 'v')
-        time.sleep(0.3)
+        time.sleep(0.4)
         pyautogui.press('enter')
+        time.sleep(0.3)
         return f"Sent '{message}' in WhatsApp chat, sir."
 
     def click_element(self, element_text: str) -> str:
