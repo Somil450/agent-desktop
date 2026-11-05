@@ -19,6 +19,11 @@ import urllib.parse
 import webbrowser
 
 try:
+    import pyperclip
+except ImportError:
+    pyperclip = None
+
+try:
     from jarvis.router.task_router import TaskRouter, TaskMode
     from jarvis.agents.general_assistant import GeneralAssistant
     from jarvis.agents.code_agent import CodeAgent
@@ -225,7 +230,8 @@ class JarvisBrain:
                     m_to = re.search(r'(?:to|in)\s+(?:the\s+chat\s+of\s+)?([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?$', step_clean)
                     if m_to:
                         recipient = m_to.group(1).replace("on whatsapp", "").strip()
-                        res = controller.send_whatsapp_message(recipient, pyperclip.paste())
+                        clip_text = pyperclip.paste() if pyperclip else ""
+                        res = controller.send_whatsapp_message(recipient, clip_text)
                         results.append(res)
                         last_action_type = "whatsapp_paste"
                         continue
