@@ -16,9 +16,9 @@ class VoiceListener:
         self.sample_rate = sample_rate
         self.recognizer = sr.Recognizer()
         self.recognizer.dynamic_energy_threshold = True
-        # Allow natural breathing and clause pauses (1.6s) without premature truncation
-        self.recognizer.pause_threshold = 1.6
-        self.recognizer.non_speaking_duration = 0.8
+        # Allow natural breathing and clause pauses (2.2s) without premature truncation
+        self.recognizer.pause_threshold = 2.2
+        self.recognizer.non_speaking_duration = 1.0
         
         self.current_level = 0.0  # 0.0 to 1.0 for VU meter
         self.status = "IDLE"

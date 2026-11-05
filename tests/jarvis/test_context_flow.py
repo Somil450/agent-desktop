@@ -52,6 +52,16 @@ class TestContextFlow(unittest.TestCase):
         self.assertEqual(self.brain.active_chat, "papa")
         self.mock_controller.open_whatsapp_chat.assert_called_with("papa", "hello")
 
+    def test_whatsapp_send_any_message_quoted(self):
+        """
+        Tests:
+        'open chat of papa and send "any message"'
+        """
+        res = self.brain.plan_and_execute('open chat of papa and send "any message"', self.mock_controller)
+        self.assertEqual(self.brain.active_app, "whatsapp")
+        self.assertEqual(self.brain.active_chat, "papa")
+        self.mock_controller.open_whatsapp_chat.assert_called_with("papa", "any message")
+
     def test_video_click_grounding_commands(self):
         """
         Tests screen video click commands:

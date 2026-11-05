@@ -164,7 +164,7 @@ class JarvisBrain:
         )
         if m_wa_open_send:
             person = m_wa_open_send.group(1).strip().replace(" on whatsapp", "").strip()
-            msg = m_wa_open_send.group(2).strip() if m_wa_open_send.group(2) else None
+            msg = m_wa_open_send.group(2).strip().strip("\"' ") if m_wa_open_send.group(2) else None
             self.active_app = "whatsapp"
             self.active_chat = person
             if msg and "screenshot" in msg:
@@ -319,7 +319,7 @@ class JarvisBrain:
         )
         if m_send_this and ("chat" in clean or self.active_chat or self.active_app == "whatsapp"):
             raw_msg = m_send_this.group(1).strip()
-            msg = re.sub(r'\s+(?:in|to)\s+(?:this\s+)?chat$', '', raw_msg).strip()
+            msg = re.sub(r'\s+(?:in|to)\s+(?:this\s+)?chat$', '', raw_msg).strip().strip("\"' ")
             if self.active_app == "whatsapp" or "chat" in clean:
                 return controller.send_whatsapp_message_in_active_chat(msg)
             elif self.active_chat:

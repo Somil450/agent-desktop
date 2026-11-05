@@ -533,21 +533,33 @@ class SystemController:
         """
         Ensures the cursor is actively focused inside the WhatsApp 'Type a message' input box:
         1. Brings WhatsApp to the foreground.
-        2. Tries to visually locate 'Type a message' placeholder via OCR and clicks it.
+        2. Tries to visually locate 'Type a message' placeholder via OCR in the right chat area.
         3. Falls back to calculating the input box coordinates based on WhatsApp window bounds.
         """
         ensure_default_desktop()
         self.focus_window_by_name("WhatsApp")
-        time.sleep(0.4)
+        time.sleep(0.3)
 
-        # 1. Visual OCR lookup for 'Type a message'
+        # 1. Visual OCR lookup for 'Type a message' in the right chat area
         if self.visual_computer:
-            target = self.visual_computer.find_text_on_screen("Type a message")
-            if target:
-                pyautogui.moveTo(target["x"], target["y"], duration=0.2)
-                pyautogui.click()
-                time.sleep(0.2)
-                return True
+            img, img_path = self.visual_computer.capture_screen()
+            if os.path.exists(img_path) and winocr:
+                try:
+                    pil_img = Image.open(img_path)
+                    res = winocr.recognize_pil_sync(pil_img)
+                    for l in res.get("lines", []):
+                        t = l.get("text", "").lower()
+                        if "type a message" in t or ("type" in t and "message" in t):
+                            words = l.get("words", [])
+                            if words:
+                                cx = sum((w["bounding_rect"]["x"] + w["bounding_rect"]["width"] / 2.0) for w in words) / len(words)
+                                cy = sum((w["bounding_rect"]["y"] + w["bounding_rect"]["height"] / 2.0) for w in words) / len(words)
+                                pyautogui.moveTo(cx, cy, duration=0.2)
+                                pyautogui.click()
+                                time.sleep(0.2)
+                                return True
+                except Exception:
+                    pass
 
         # 2. Geometric fallback from WhatsApp window bounds
         windows = self.list_windows()
@@ -559,9 +571,9 @@ class SystemController:
                     by = b.get("y", 0)
                     bw = b.get("width", 0)
                     bh = b.get("height", 0)
-                    # WhatsApp message input is centered in the right chat panel ~45px from bottom
+                    # WhatsApp message input is centered in the right chat panel ~50px from bottom
                     click_x = int(bx + bw * 0.60)
-                    click_y = int(by + bh - 45)
+                    click_y = int(by + bh - 50)
                     pyautogui.moveTo(click_x, click_y, duration=0.2)
                     pyautogui.click()
                     time.sleep(0.2)
@@ -569,7 +581,7 @@ class SystemController:
 
         # 3. Primary screen fallback
         screen_w, screen_h = pyautogui.size()
-        pyautogui.moveTo(int(screen_w * 0.60), int(screen_h * 0.85), duration=0.2)
+        pyautogui.moveTo(int(screen_w * 0.60), int(screen_h * 0.72), duration=0.2)
         pyautogui.click()
         time.sleep(0.2)
         return True
@@ -580,9 +592,9 @@ class SystemController:
         try:
             # 1. Bring WhatsApp to front
             subprocess.Popen("start whatsapp:", shell=True)
-            time.sleep(1.0)
+            time.sleep(0.8)
             self.focus_window_by_name("WhatsApp")
-            time.sleep(0.5)
+            time.sleep(0.4)
 
             pyautogui.press('esc')
             time.sleep(0.2)
@@ -613,18 +625,55 @@ class SystemController:
                 time.sleep(0.1)
 
                 # Type candidate name slowly so WhatsApp registers it
-                pyautogui.write(candidate, interval=0.07)
+                pyautogui.write(candidate, interval=0.06)
                 time.sleep(1.2)  # Wait for WhatsApp search results to populate
 
-                # Press Down to highlight first result, then Enter to open
-                pyautogui.press('down')
-                time.sleep(0.3)
-                pyautogui.press('enter')
-                time.sleep(0.6)
+                # Click contact in search results list (avoiding filter chips like [All])
+                windows = self.list_windows()
+                wa_bounds = None
+                for w in windows:
+                    if "whatsapp" in w.get("app_name", "").lower():
+                        wa_bounds = w.get("bounds", {})
+                        break
 
-                # Press Escape to dismiss search bar if still open
-                pyautogui.press('esc')
-                time.sleep(0.2)
+                clicked_contact = False
+                if self.visual_computer and wa_bounds:
+                    img, img_path = self.visual_computer.capture_screen()
+                    if os.path.exists(img_path) and winocr:
+                        try:
+                            pil_img = Image.open(img_path)
+                            res = winocr.recognize_pil_sync(pil_img)
+                            for l in res.get("lines", []):
+                                t = l.get("text", "").lower()
+                                if candidate.lower() in t:
+                                    words = l.get("words", [])
+                                    if words:
+                                        cx = sum((w["bounding_rect"]["x"] + w["bounding_rect"]["width"] / 2.0) for w in words) / len(words)
+                                        cy = sum((w["bounding_rect"]["y"] + w["bounding_rect"]["height"] / 2.0) for w in words) / len(words)
+                                        bx = wa_bounds.get("x", 0)
+                                        by = wa_bounds.get("y", 0)
+                                        # Contact must be in left sidebar and below search bar
+                                        if bx <= cx <= (bx + wa_bounds.get("width", 1000) * 0.40) and cy >= (by + 180):
+                                            pyautogui.moveTo(cx, cy, duration=0.2)
+                                            pyautogui.click()
+                                            time.sleep(0.8)
+                                            clicked_contact = True
+                                            break
+                        except Exception:
+                            pass
+
+                # Geometric fallback click on the first contact card
+                if not clicked_contact:
+                    if wa_bounds:
+                        contact_x = int(wa_bounds.get("x", 0) + 180)
+                        contact_y = int(wa_bounds.get("y", 0) + 265)
+                    else:
+                        contact_x = 830
+                        contact_y = 265
+                    pyautogui.moveTo(contact_x, contact_y, duration=0.2)
+                    pyautogui.click()
+                    time.sleep(0.8)
+
                 opened = True
                 break
 
@@ -637,12 +686,13 @@ class SystemController:
 
             # Send message if provided
             if message:
-                pyperclip.copy(message)
+                clean_msg = message.strip("\"' ")
+                pyperclip.copy(clean_msg)
                 pyautogui.hotkey('ctrl', 'v')
                 time.sleep(0.4)
                 pyautogui.press('enter')  # Send the message
                 time.sleep(0.3)
-                return f"Sent '{message}' to {contact_name} on WhatsApp, sir."
+                return f"Sent '{clean_msg}' to {contact_name} on WhatsApp, sir."
 
             return f"Opened WhatsApp chat with {contact_name}, sir."
         except Exception as e:
@@ -814,12 +864,13 @@ class SystemController:
         ensure_default_desktop()
         self.focus_whatsapp_input_box()
         time.sleep(0.3)
-        pyperclip.copy(message)
+        clean_msg = message.strip("\"' ")
+        pyperclip.copy(clean_msg)
         pyautogui.hotkey('ctrl', 'v')
         time.sleep(0.4)
         pyautogui.press('enter')
         time.sleep(0.3)
-        return f"Sent '{message}' in WhatsApp chat, sir."
+        return f"Sent '{clean_msg}' in WhatsApp chat, sir."
 
     def click_element(self, element_text: str) -> str:
         """Finds any UI element matching text in the active window or via OCR and clicks it."""
