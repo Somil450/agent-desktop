@@ -16,8 +16,9 @@ class VoiceListener:
         self.sample_rate = sample_rate
         self.recognizer = sr.Recognizer()
         self.recognizer.dynamic_energy_threshold = True
-        self.recognizer.pause_threshold = 0.8
-        self.recognizer.non_speaking_duration = 0.5
+        # Allow natural breathing and clause pauses (1.6s) without premature truncation
+        self.recognizer.pause_threshold = 1.6
+        self.recognizer.non_speaking_duration = 0.8
         
         self.current_level = 0.0  # 0.0 to 1.0 for VU meter
         self.status = "IDLE"
@@ -71,10 +72,10 @@ class VoiceListener:
             self.status = "ONLINE"
             return 300
 
-    def listen_command(self, timeout=1.5, phrase_time_limit=8.0) -> str:
+    def listen_command(self, timeout=2.0, phrase_time_limit=30.0) -> str:
         """
-        Listens for a spoken phrase with short non-blocking timeout.
-        Returns the recognized string, or empty string if no speech detected.
+        Listens for a spoken phrase with natural conversational flow limits.
+        Allows up to 30 seconds of continuous speech without cutting off mid-sentence.
         """
         self.status = "LISTENING"
         try:

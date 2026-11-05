@@ -78,32 +78,6 @@ class JarvisBrain:
                 return self._coordinate_multi_agent(raw, controller)
 
         # -------------------------------------------------------------
-        # 0.5 REAL-TIME SYSTEM INTROSPECTION & TELEMETRY
-        # -------------------------------------------------------------
-        if any(w in clean for w in ["my ip", "ip address", "tell my ip", "tell ip", "what is ip", "what's my ip", "show ip"]):
-            return controller.get_spoken_ip() if controller else self._get_local_ip_direct()
-
-        if any(w in clean for w in ["wifi", "wi-fi", "network status", "internet status", "connection speed"]):
-            return controller.get_network_status() if controller else "Network adapter connected, sir."
-
-        if any(w in clean for w in ["what time", "tell time", "current time", "what's the time", "what day", "today's date", "what is the date", "what date"]):
-            return controller.get_time_and_date() if controller else "Time unavailable."
-
-        if any(w in clean for w in ["battery level", "battery percentage", "how much battery", "check battery", "is it charging"]):
-            return controller.get_battery_status() if controller else "Battery status nominal."
-
-        if any(w in clean for w in ["disk space", "storage space", "free space", "how much storage", "hard drive"]):
-            return controller.get_storage_status() if controller else "Storage nominal."
-
-        if any(w in clean for w in ["calculate", "what is "]) and any(op in clean for op in ["+", "-", "*", "/", "times", "divided by", "plus", "minus", "percent"]):
-            m_calc = re.search(r'(?:calculate|what is)\s+(.+)', clean)
-            expr = m_calc.group(1).rstrip("?.!") if m_calc else clean
-            return controller.calculate_math(expr) if controller else "Calculation complete."
-
-        if any(w in clean for w in ["read clipboard", "what's on clipboard", "what is on my clipboard", "clipboard content"]):
-            return controller.read_clipboard_text() if controller else "Clipboard empty."
-
-        # -------------------------------------------------------------
         # 1. HIGH-LEVEL COMPOSITE WORKFLOWS (Evaluated First)
         # -------------------------------------------------------------
 
@@ -206,18 +180,14 @@ class JarvisBrain:
             return controller.clone_and_open_repo(repo, ide=ide)
 
         # -------------------------------------------------------------
-        # 2. SEQUENTIAL MULTI-STEP CHAINING ("and then", "then", "after that")
-        #    ONLY split if no WhatsApp/messaging pattern already matched above
-        #    and the sentence doesn't look like a single WhatsApp send command
+        # 2. SEQUENTIAL MULTI-STEP CHAINING ("and then", "then", "after that", "and also")
         # -------------------------------------------------------------
-        _is_wa_send = any(kw in clean for kw in [
-            "send", "message", "text", "chat of", "chat with", "whatsapp"
-        ])
-        split_pattern = r'\s+(?:and\s+then|then|after\s+that)\s+'
-        if re.search(split_pattern, clean) and not _is_wa_send:
-            sub_steps = re.split(split_pattern, clean)
-            if len(sub_steps) > 1:
-                return self._execute_chain(sub_steps, controller)
+        split_pattern = r'\s+(?:and\s+then|then|after\s+that|and\s+also)\s+|\s+and\s+(?=(?:open|launch|go\s+to|search|take|capture|copy|paste|click|send|type|press|lock|turn))\s+'
+        if not clean.startswith("say ") and not clean.startswith("type "):
+            if re.search(split_pattern, clean):
+                sub_steps = [s.strip() for s in re.split(split_pattern, clean) if s.strip()]
+                if len(sub_steps) > 1:
+                    return self._execute_chain(sub_steps, controller)
 
         # -------------------------------------------------------------
         # 3. SINGLE STEP EXECUTION
@@ -225,25 +195,84 @@ class JarvisBrain:
         return self._execute_single_step(clean, controller)
 
     def _execute_chain(self, steps: list[str], controller) -> str:
-        """Executes a series of sequential sub-commands in order."""
+        """Executes a series of sequential sub-commands in order, passing context across steps."""
         results = []
+        last_action_type = None
+
         for i, step in enumerate(steps):
             step_clean = step.strip().lstrip(",.!? ").strip()
             if not step_clean:
                 continue
 
-            for p in ["jarvis", "and", "also"]:
+            for p in ["jarvis", "and", "also", "now", "please"]:
                 if step_clean.startswith(p + " "):
                     step_clean = step_clean[len(p) + 1:].strip()
 
+            # Context awareness: If previous step took a screenshot and current step says "send ... to whatsapp"
+            if last_action_type == "screenshot" and any(w in step_clean for w in ["send", "whatsapp", "share"]):
+                if not any(w in step_clean for w in ["text", "message", "saying"]):
+                    m_to = re.search(r'(?:to|in)\s+(?:the\s+chat\s+of\s+)?([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?$', step_clean)
+                    if m_to:
+                        recipient = m_to.group(1).replace("on whatsapp", "").strip()
+                        res = controller.send_screenshot_to_whatsapp(recipient)
+                        results.append(res)
+                        last_action_type = "whatsapp_screenshot"
+                        continue
+
+            # Context awareness: If previous step copied text and current step says "paste" or "send ... to whatsapp"
+            if last_action_type == "copy" and ("paste" in step_clean or "send" in step_clean):
+                if "whatsapp" in step_clean:
+                    m_to = re.search(r'(?:to|in)\s+(?:the\s+chat\s+of\s+)?([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?$', step_clean)
+                    if m_to:
+                        recipient = m_to.group(1).replace("on whatsapp", "").strip()
+                        res = controller.send_whatsapp_message(recipient, pyperclip.paste())
+                        results.append(res)
+                        last_action_type = "whatsapp_paste"
+                        continue
+
             res = self._execute_single_step(step_clean, controller)
             results.append(res)
-            time.sleep(0.5)
 
-        return " | ".join(results)
+            # Record action type for next step
+            if any(w in step_clean for w in ["screenshot", "capture screen"]):
+                last_action_type = "screenshot"
+            elif any(w in step_clean for w in ["copy", "copy this", "copy all"]):
+                last_action_type = "copy"
+            elif "chrome" in step_clean or "search" in step_clean:
+                last_action_type = "browse"
+
+            time.sleep(0.6)
+
+        return " | ".join([r for r in results if r])
 
     def _execute_single_step(self, clean: str, controller) -> str:
         """Processes an individual action."""
+
+        # -------------------------------------------------------------
+        # 0. REAL-TIME SYSTEM INTROSPECTION & TELEMETRY
+        # -------------------------------------------------------------
+        if any(w in clean for w in ["my ip", "ip address", "tell my ip", "tell ip", "what is ip", "what's my ip", "show ip"]):
+            return controller.get_spoken_ip() if controller else self._get_local_ip_direct()
+
+        if any(w in clean for w in ["wifi", "wi-fi", "network status", "internet status", "connection speed"]):
+            return controller.get_network_status() if controller else "Network adapter connected, sir."
+
+        if any(w in clean for w in ["what time", "tell time", "current time", "what's the time", "what day", "today's date", "what is the date", "what date"]):
+            return controller.get_time_and_date() if controller else "Time unavailable."
+
+        if any(w in clean for w in ["battery level", "battery percentage", "how much battery", "check battery", "is it charging"]):
+            return controller.get_battery_status() if controller else "Battery status nominal."
+
+        if any(w in clean for w in ["disk space", "storage space", "free space", "how much storage", "hard drive"]):
+            return controller.get_storage_status() if controller else "Storage nominal."
+
+        if any(w in clean for w in ["calculate", "what is "]) and any(op in clean for op in ["+", "-", "*", "/", "times", "divided by", "plus", "minus", "percent"]):
+            m_calc = re.search(r'(?:calculate|what is)\s+(.+)', clean)
+            expr = m_calc.group(1).rstrip("?.!") if m_calc else clean
+            return controller.calculate_math(expr) if controller else "Calculation complete."
+
+        if any(w in clean for w in ["read clipboard", "what's on clipboard", "what is on my clipboard", "clipboard content"]):
+            return controller.read_clipboard_text() if controller else "Clipboard empty."
 
         # -------------------------------------------------------------
         # A. WHATSAPP CHAT & SENDING MESSAGES

@@ -63,6 +63,8 @@ class Jarvis:
         self.retriever = DatasetRetriever()
         self.running = True
         self.last_telemetry = self.controller.get_system_diagnostics()
+        self.active_flow_expiry = 0.0
+        self.flow_timeout_seconds = 25.0
 
     def process_command(self, cmd: str) -> str:
         """Processes command using the autonomous brain & experience recorder."""
@@ -159,31 +161,45 @@ class Jarvis:
                     self.hud.audio_level = self.listener.current_level
                     live.update(self.hud.generate_layout(self.last_telemetry))
 
-                    # Listen for spoken audio with short non-blocking timeouts
-                    spoken = self.listener.listen_command(timeout=1.2, phrase_time_limit=7.0)
+                    # Listen for spoken audio with conversational flow limits (phrase_time_limit up to 25s)
+                    spoken = self.listener.listen_command(timeout=1.5, phrase_time_limit=25.0)
 
                     if spoken:
                         self.hud.last_command = spoken
                         live.update(self.hud.generate_layout(self.last_telemetry))
 
-                        # 1. Check for wake word 'Jarvis'
+                        # 1. Check for wake word 'Jarvis' or ongoing active flow session
                         has_wake, command_body = check_wake_word(spoken)
-                        
-                        if not has_wake:
+                        is_active_flow = time.time() < self.active_flow_expiry
+
+                        if not has_wake and not is_active_flow:
                             self.hud.status = "IGNORED (NO 'JARVIS')"
                             self.hud.add_log(f"Heard: {spoken[:25]}", "Ignored: Missing 'Jarvis'")
                             live.update(self.hud.generate_layout(self.last_telemetry))
-                            time.sleep(0.4)
+                            time.sleep(0.3)
                             self.hud.status = "LISTENING"
                             continue
 
-                        # 2. Wake word present -> process command
+                        # Active flow control: exit flow on dismissive phrases
+                        if any(phrase in spoken.lower() for phrase in ["that's all", "that is all", "done for now", "nevermind"]):
+                            self.active_flow_expiry = 0.0
+                            self.voice.speak("Standing by, sir.", async_mode=True)
+                            self.hud.status = "LISTENING"
+                            live.update(self.hud.generate_layout(self.last_telemetry))
+                            continue
+
+                        # Extend active flow window (25s) so user can talk naturally without repeating 'Jarvis'
+                        self.active_flow_expiry = time.time() + self.flow_timeout_seconds
+
+                        effective_cmd = command_body if (has_wake and command_body) else spoken
+
+                        # 2. Process command
                         self.hud.status = "PROCESSING"
                         live.update(self.hud.generate_layout(self.last_telemetry))
 
-                        response = self.process_command(command_body if command_body else spoken)
+                        response = self.process_command(effective_cmd)
                         self.hud.last_response = response
-                        self.hud.add_log(f"Voice: {spoken[:25]}", response[:40])
+                        self.hud.add_log(f"Voice: {effective_cmd[:25]}", response[:40])
 
                         self.hud.status = "SPEAKING"
                         live.update(self.hud.generate_layout(self.last_telemetry))
@@ -191,7 +207,7 @@ class Jarvis:
                         self.voice.speak(response)
                         if not self.running:
                             break
-                        self.hud.status = "LISTENING"
+                        self.hud.status = "LISTENING (ACTIVE FLOW)"
                         live.update(self.hud.generate_layout(self.last_telemetry))
 
                     time.sleep(0.04)
