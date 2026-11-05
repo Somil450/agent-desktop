@@ -465,16 +465,32 @@ class JarvisBrain:
             return controller.open_url(m_goto_url.group(1))
 
         # -------------------------------------------------------------
-        # J. CHROME / GOOGLE SEARCH
+        # J. CHROME / GOOGLE SEARCH & PROFILE ROUTING
         # -------------------------------------------------------------
+        m_chrome_search = re.search(r'(?:open\s+chrome|launch\s+chrome)\s+(?:and\s+)?(?:search\s+(?:for\s+)?(.+)|go\s+to\s+(.+)|as\s+([a-zA-Z0-9]+))', clean)
+        if m_chrome_search:
+            search_query = m_chrome_search.group(1)
+            goto_url = m_chrome_search.group(2)
+            profile = m_chrome_search.group(3) or ("anand" if "anand" in clean else "somil")
+            if search_query:
+                url = f"https://www.google.com/search?q={urllib.parse.quote(search_query.strip())}"
+                return controller.launch_chrome(profile=profile, url=url)
+            elif goto_url:
+                url = goto_url.strip()
+                if not url.startswith("http"):
+                    url = f"https://{url}"
+                return controller.launch_chrome(profile=profile, url=url)
+            return controller.launch_chrome(profile=profile)
+
         search_match = re.search(r'^(?:search|google|look up|find)\s+(?:for\s+)?(.+?)(?:\s+on\s+(?:chrome|google|the web))?$', clean)
         if search_match:
             query = search_match.group(1).strip()
             if not any(a in query for a in ["folder", "file", "app", "pdf", "doc"]):
                 return controller.search_web(query)
 
-        if "open chrome" in clean or "launch chrome" in clean:
-            return controller.launch_app("chrome")
+        if "open chrome" in clean or "launch chrome" in clean or clean in ["chrome", "google chrome"]:
+            profile = "anand" if "anand" in clean else "somil"
+            return controller.launch_chrome(profile=profile)
 
         # -------------------------------------------------------------
         # K. LOCAL FOLDERS & DRIVES

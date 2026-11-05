@@ -169,6 +169,67 @@ class SystemController:
         except Exception as e:
             return f"Could not launch Antigravity IDE: {e}"
 
+    def launch_chrome(self, profile: str = "somil", url: str = None) -> str:
+        """
+        Launches Google Chrome directly into the user's profile, bypassing
+        the multi-profile 'Who's using Chrome?' selection screen.
+        """
+        profile_map = {
+            "somil": "Profile 2",
+            "anand": "Profile 3",
+            "default": "Profile 2",
+            "person 1": "Default",
+            "riya": "Profile 12",
+            "vit": "Profile 17",
+        }
+        prof_dir = profile_map.get(profile.lower(), "Profile 2")
+
+        cmd = ["cmd.exe", "/c", "start", "chrome", f"--profile-directory={prof_dir}"]
+        if url:
+            cmd.append(url)
+
+        try:
+            subprocess.Popen(cmd, shell=True)
+            time.sleep(0.4)
+            self._dismiss_chrome_profile_picker_if_open(profile)
+            if url:
+                return f"Opening Chrome ({profile.title()} profile) to {url}, sir."
+            return f"Opening Google Chrome ({profile.title()} profile), sir."
+        except Exception as e:
+            return f"Could not launch Chrome: {e}"
+
+    def _dismiss_chrome_profile_picker_if_open(self, preferred_profile: str = "somil"):
+        """If the Chrome profile picker window is open, automatically click the user's profile card."""
+        try:
+            windows = self.list_windows()
+            picker_win = None
+            for w in windows:
+                if "chrome" in w.get("app_name", "").lower() and w.get("title") == "Google Chrome":
+                    bounds = w.get("bounds", {})
+                    if bounds.get("width", 0) < 1600:
+                        picker_win = w
+                        break
+            if picker_win:
+                win_id = picker_win.get("id")
+                out = subprocess.check_output(f'agent-desktop snapshot --window-id {win_id} -i', shell=True, text=True, timeout=3)
+                data = json.loads(out)
+                target_ref = None
+                def find_profile(node):
+                    nonlocal target_ref
+                    if target_ref:
+                        return
+                    name = node.get("name", "").lower()
+                    if preferred_profile.lower() in name and "profile" in name:
+                        target_ref = node.get("ref_id")
+                        return
+                    for c in node.get("children", []):
+                        find_profile(c)
+                find_profile(data.get("data", {}).get("tree", {}))
+                if target_ref:
+                    subprocess.run(f'agent-desktop click "{target_ref}"', shell=True, timeout=3)
+        except Exception:
+            pass
+
     def launch_app(self, app_name: str) -> str:
         """Launches an application by name or common alias, searching all installed Windows apps."""
         clean_name = app_name.lower().strip()
@@ -176,6 +237,10 @@ class SystemController:
         # Normalize Antigravity
         if "antigravity" in clean_name or "anti gravity" in clean_name:
             return self.focus_or_launch_antigravity()
+
+        # Chrome with direct profile resolution (bypasses profile picker)
+        if clean_name in ["chrome", "google chrome", "browser"]:
+            return self.launch_chrome(profile="somil")
 
         # 1. Common direct protocol aliases
         app_map = {

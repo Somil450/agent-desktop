@@ -41,8 +41,12 @@ class TestJarvisBrainIntegration(unittest.TestCase):
         self.assertIn("Project Inspection Report", res)
 
     def test_brain_routes_desktop_open_app(self):
+        self.brain.plan_and_execute("Open Notepad", self.mock_controller)
+        self.mock_controller.launch_app.assert_called_with("notepad")
+
+    def test_brain_routes_chrome_profile(self):
         self.brain.plan_and_execute("Open Chrome", self.mock_controller)
-        self.mock_controller.launch_app.assert_called_with("chrome")
+        self.mock_controller.launch_chrome.assert_called_with(profile="somil")
 
 if __name__ == "__main__":
     unittest.main()
