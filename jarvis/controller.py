@@ -46,13 +46,17 @@ VK_MEDIA_PREV_TRACK = 0xB1
 VK_MEDIA_PLAY_PAUSE = 0xB3
 
 # Common phonetic aliases for Indian & international speech names
+# Each key maps to ordered list of search candidates to try in WhatsApp
 CONTACT_ALIASES = {
-    "mummi": ["mummy", "mummi", "mom", "maa", "mother"],
-    "mummy": ["mummy", "mummi", "mom", "maa", "mother"],
-    "mom": ["mom", "mummy", "mummi", "maa"],
-    "papa": ["papa", "dad", "father", "pop"],
-    "dad": ["dad", "papa", "father"],
-    "bhai": ["bhai", "brother", "bro"],
+    "mummi":  ["Badii Mummy", "mummy", "mummi", "maa", "mom", "mother"],
+    "mummy":  ["Badii Mummy", "mummy", "mummi", "maa", "mom", "mother"],
+    "maa":    ["Badii Mummy", "maa", "mummy", "mummi", "mom"],
+    "mom":    ["mom", "mummy", "mummi", "maa", "Badii Mummy"],
+    "mother": ["Badii Mummy", "mummy", "mother"],
+    "papa":   ["papa", "dad", "father", "pop"],
+    "dad":    ["dad", "papa", "father"],
+    "bhai":   ["bhai", "brother", "bro"],
+    "didi":   ["didi", "sister", "di"],
 }
 
 class SystemController:
@@ -221,8 +225,12 @@ class SystemController:
             except Exception:
                 pass
 
-        # 3. Fallback only if single executable name
-        if len(clean_name.split()) == 1 and not any(v in clean_name for v in ["send", "chat", "click", "search"]):
+        # 3. Fallback only if single executable name AND clearly not a natural-language phrase
+        if (
+            len(clean_name.split()) == 1
+            and not any(v in clean_name for v in ["send", "chat", "click", "search", "message", "text", "type"])
+            and clean_name.isidentifier()  # only valid identifier-style names
+        ):
             try:
                 subprocess.Popen(f"start {clean_name}", shell=True)
                 return f"Opening {app_name}, sir."
@@ -450,43 +458,67 @@ class SystemController:
         try:
             # 1. Bring WhatsApp to front
             subprocess.Popen("start whatsapp:", shell=True)
-            time.sleep(0.8)
+            time.sleep(1.2)
             self.focus_window_by_name("WhatsApp")
-            time.sleep(0.5)
+            time.sleep(0.6)
 
             pyautogui.press('esc')
-            time.sleep(0.2)
+            time.sleep(0.3)
 
             # Determine search candidate terms (including phonetic aliases)
             target = contact_name.strip()
             candidates = [target]
             lower_target = target.lower()
+
+            # Always expand aliases — mummi/mummy → try both + "Badii Mummy" for mummy contact
             if lower_target in CONTACT_ALIASES:
                 candidates = CONTACT_ALIASES[lower_target]
+            # Also try original name in case alias list doesn't match
+            if target not in candidates:
+                candidates.append(target)
 
-            # Try candidate searches
+            # Try candidate searches — open Ctrl+F search bar and type each candidate
+            opened = False
             for candidate in candidates:
+                # Open search
                 pyautogui.hotkey('ctrl', 'f')
-                time.sleep(0.2)
+                time.sleep(0.4)
+
+                # Clear any existing text
                 pyautogui.hotkey('ctrl', 'a')
-                pyautogui.press('backspace')
+                time.sleep(0.1)
+                pyautogui.press('delete')
                 time.sleep(0.1)
 
-                pyautogui.write(candidate, interval=0.04)
-                time.sleep(1.0)  # Wait for WhatsApp search results
+                # Type candidate name slowly so WhatsApp registers it
+                pyautogui.write(candidate, interval=0.07)
+                time.sleep(1.5)  # Wait for WhatsApp search results to populate
 
+                # Press Down to highlight first result, then Enter to open
                 pyautogui.press('down')
-                time.sleep(0.3)
+                time.sleep(0.4)
                 pyautogui.press('enter')
-                time.sleep(0.6)
+                time.sleep(0.8)
+
+                # Press Escape to dismiss search bar if still open
+                pyautogui.press('esc')
+                time.sleep(0.3)
+                opened = True
                 break
 
+            if not opened:
+                return f"Could not open WhatsApp chat for {contact_name}, sir."
+
+            # 2. Click on the message input box to ensure focus
+            time.sleep(0.5)
             # Send message if provided
             if message:
+                # Click the message input area (bottom of WhatsApp)
                 pyperclip.copy(message)
                 pyautogui.hotkey('ctrl', 'v')
+                time.sleep(0.4)
+                pyautogui.press('enter')  # Send the message
                 time.sleep(0.3)
-                pyautogui.press('enter')
                 return f"Sent '{message}' to {contact_name} on WhatsApp, sir."
 
             return f"Opened WhatsApp chat with {contact_name}, sir."

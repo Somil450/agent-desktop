@@ -141,9 +141,14 @@ class JarvisBrain:
 
         # -------------------------------------------------------------
         # 2. SEQUENTIAL MULTI-STEP CHAINING ("and then", "then", "after that")
+        #    ONLY split if no WhatsApp/messaging pattern already matched above
+        #    and the sentence doesn't look like a single WhatsApp send command
         # -------------------------------------------------------------
+        _is_wa_send = any(kw in clean for kw in [
+            "send", "message", "text", "chat of", "chat with", "whatsapp"
+        ])
         split_pattern = r'\s+(?:and\s+then|then|after\s+that)\s+'
-        if re.search(split_pattern, clean):
+        if re.search(split_pattern, clean) and not _is_wa_send:
             sub_steps = re.split(split_pattern, clean)
             if len(sub_steps) > 1:
                 return self._execute_chain(sub_steps, controller)
@@ -176,7 +181,23 @@ class JarvisBrain:
 
         # -------------------------------------------------------------
         # A. WHATSAPP CHAT & SENDING MESSAGES
+        # Broad natural-language patterns: "send X to Y", "message Y saying X",
+        # "open whatsapp chat of Y and say X", "whatsapp Y: X" etc.
+        # Order: most-specific first to avoid false matches.
         # -------------------------------------------------------------
+
+        # Pattern A1: "send hello in the chat of mummi" (most specific — has 'chat of')
+        m_send_chat_of = re.search(
+            r'^send\s+(.+?)\s+in\s+(?:the\s+)?chat\s+(?:of|with)\s+([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?$', clean
+        )
+        if m_send_chat_of:
+            msg = m_send_chat_of.group(1).strip()
+            person = m_send_chat_of.group(2).strip()
+            if "screenshot" in msg:
+                return controller.send_screenshot_to_whatsapp(person, None)
+            return controller.open_whatsapp_chat(person, msg)
+
+        # Pattern A2: "send hello to/in chat of mummi" (with explicit 'chat of')
         m_send1 = re.search(r'send\s+(.+?)\s+(?:in|to)\s+(?:the\s+)?chat\s+of\s+([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?$', clean)
         if m_send1:
             msg = m_send1.group(1).strip()
@@ -187,6 +208,7 @@ class JarvisBrain:
                 return controller.send_screenshot_to_whatsapp(person, caption)
             return controller.open_whatsapp_chat(person, msg)
 
+        # Pattern A3: "in/to the chat of mummi send hello" (reversed order)
         m_send1b = re.search(r'(?:in|to)\s+(?:the\s+)?chat\s+of\s+([a-zA-Z0-9_\s]+?)\s+send\s+(.+)$', clean)
         if m_send1b:
             person = m_send1b.group(1).strip().replace(" on whatsapp", "").strip()
@@ -197,15 +219,26 @@ class JarvisBrain:
                 return controller.send_screenshot_to_whatsapp(person, caption)
             return controller.open_whatsapp_chat(person, msg)
 
-        m_send2 = re.search(r'send\s+(.+?)\s+to\s+([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?$', clean)
-        if m_send2:
-            msg = m_send2.group(1).strip()
-            person = m_send2.group(2).strip().replace(" on whatsapp", "").strip()
-            if person not in ["screen", "browser", "desktop", "all"]:
+        # Pattern A4: "send hello to mummi" / "send hello to mummy on whatsapp"
+        m_simple_send = re.search(
+            r'^send\s+(.+?)\s+to\s+([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?$', clean
+        )
+        if m_simple_send:
+            msg = m_simple_send.group(1).strip()
+            person = m_simple_send.group(2).strip().replace("on whatsapp", "").strip()
+            if person and person not in ["screen", "browser", "desktop", "all", "this", "me"]:
                 if "screenshot" in msg:
-                    caption = re.sub(r'^(?:this\s+)?screenshot\s*(?:and\s+)?(?:type|say|saying|with\s+message)?\s*', '', msg).strip()
-                    caption = caption if caption and caption != "screenshot" else None
-                    return controller.send_screenshot_to_whatsapp(person, caption)
+                    return controller.send_screenshot_to_whatsapp(person, None)
+                return controller.open_whatsapp_chat(person, msg)
+
+        # Pattern A5: "message mummi saying hello" / "text mummi: hello"
+        m_message_saying = re.search(
+            r'^(?:message|text|msg)\s+([a-zA-Z0-9_\s]+?)\s+(?:saying|and\s+say|say|with\s+message|:)?\s*(.+)$', clean
+        )
+        if m_message_saying:
+            person = m_message_saying.group(1).strip()
+            msg = m_message_saying.group(2).strip()
+            if person and msg and person not in ["him", "her", "them", "it"]:
                 return controller.open_whatsapp_chat(person, msg)
 
         m_open_chat = re.search(r'(?:open\s+)?(?:whatsapp\s+)?chat\s+(?:of|with)\s+([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?(?:\s+(?:and\s+send|saying|and\s+say)\s+(.+))?$', clean)
@@ -434,7 +467,16 @@ class JarvisBrain:
 
         # -------------------------------------------------------------
         # N. FALLBACK: APP SEARCH
+        # Only pass to launch_app if the command looks like an app name,
+        # NOT if it contains conversational/action words.
         # -------------------------------------------------------------
+        _action_words = [
+            "send", "message", "text", "chat", "click", "type", "write",
+            "search", "find", "open chat", "go to chat", "say", "hello",
+            "open the", "press", "paste", "copy"
+        ]
+        if any(w in clean for w in _action_words):
+            return f"I'm sorry sir, I didn't understand that command: '{clean}'. Could you please rephrase?"
         return controller.launch_app(clean)
 
     def _handle_scoped_search(self, clean: str) -> str:
