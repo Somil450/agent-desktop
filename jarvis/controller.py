@@ -17,13 +17,20 @@ import struct
 import subprocess
 import webbrowser
 import urllib.parse
+import urllib.request
 import ctypes
+import math
 import psutil
 import pyautogui
 import pyperclip
 from PIL import Image
 import win32clipboard
 import win32con
+
+try:
+    import winocr
+except ImportError:
+    winocr = None
 
 try:
     from jarvis.vision.visual_computer_use import VisualComputerUse
@@ -178,7 +185,7 @@ class SystemController:
         except Exception as e:
             return f"Could not launch Antigravity IDE: {e}"
 
-    def launch_chrome(self, profile: str = "somil", url: str = None) -> str:
+    def launch_chrome(self, profile: str = "somil", url: str | None = None) -> str:
         """
         Launches Google Chrome directly into the user's profile, bypassing
         the multi-profile 'Who's using Chrome?' selection screen.
@@ -468,7 +475,7 @@ class SystemController:
             print(f"[File Clipboard Error] {e}")
             return False
 
-    def find_file(self, query: str, roots: list = None) -> str:
+    def find_file(self, query: str, roots: list | None = None) -> str:
         """Searches Downloads, Documents, Desktop, and workspace for a matching file."""
         if roots is None:
             roots = [
@@ -496,7 +503,7 @@ class SystemController:
             return matches[0][1]
         return ""
 
-    def send_file_to_whatsapp(self, contact_name: str, file_query: str, caption: str = None) -> str:
+    def send_file_to_whatsapp(self, contact_name: str, file_query: str, caption: str | None = None) -> str:
         """Finds matching file (e.g. PDF), copies as CF_HDROP, and sends in WhatsApp chat."""
         ensure_default_desktop()
         filepath = self.find_file(file_query)
@@ -579,14 +586,14 @@ class SystemController:
                     time.sleep(0.2)
                     return True
 
-        # 3. Primary screen fallback
+        # 3. Primary screen fallback: input box at bottom-right/center
         screen_w, screen_h = pyautogui.size()
-        pyautogui.moveTo(int(screen_w * 0.60), int(screen_h * 0.72), duration=0.2)
+        pyautogui.moveTo(int(screen_w * 0.60), int(screen_h - 55), duration=0.2)
         pyautogui.click()
         time.sleep(0.2)
         return True
 
-    def open_whatsapp_chat(self, contact_name: str, message: str = None) -> str:
+    def open_whatsapp_chat(self, contact_name: str, message: str | None = None) -> str:
         """Opens a specific contact chat in WhatsApp Desktop and optionally sends a message."""
         ensure_default_desktop()
         try:
@@ -665,14 +672,20 @@ class SystemController:
                 # Geometric fallback click on the first contact card
                 if not clicked_contact:
                     if wa_bounds:
-                        contact_x = int(wa_bounds.get("x", 0) + 180)
-                        contact_y = int(wa_bounds.get("y", 0) + 265)
+                        contact_x = int(wa_bounds.get("x", 0) + min(220, wa_bounds.get("width", 800) * 0.25))
+                        contact_y = int(wa_bounds.get("y", 0) + 300)
                     else:
-                        contact_x = 830
-                        contact_y = 265
+                        contact_x = 220
+                        contact_y = 300
                     pyautogui.moveTo(contact_x, contact_y, duration=0.2)
                     pyautogui.click()
-                    time.sleep(0.8)
+                    time.sleep(0.5)
+
+                # Commit contact selection via keyboard
+                pyautogui.press('down')
+                time.sleep(0.1)
+                pyautogui.press('enter')
+                time.sleep(0.6)
 
                 opened = True
                 break
@@ -721,7 +734,7 @@ class SystemController:
                 print(f"[Clipboard Error] {e}")
         return ""
 
-    def send_screenshot_to_whatsapp(self, contact_name: str, caption: str = None) -> str:
+    def send_screenshot_to_whatsapp(self, contact_name: str, caption: str | None = None) -> str:
         """Captures a screenshot, opens WhatsApp chat with contact, and sends the image with caption."""
         ensure_default_desktop()
         try:
@@ -745,7 +758,7 @@ class SystemController:
         except Exception as e:
             return f"Error sending screenshot to {contact_name}: {e}"
 
-    def search_and_send_screenshot(self, query: str, platform: str, contact_name: str, caption: str = None) -> str:
+    def search_and_send_screenshot(self, query: str, platform: str, contact_name: str, caption: str | None = None) -> str:
         """Full multi-step autonomous workflow: Searches a platform, screenshots it, and sends via WhatsApp."""
         plat = platform.lower() if platform else "google"
         if plat == "youtube":
@@ -794,7 +807,7 @@ class SystemController:
     # -------------------------------------------------------------
     # 6. DIRECT UI INTERACTIONS (CLICK, TYPE, PRESS KEYS, VIDEO GROUNDING)
     # -------------------------------------------------------------
-    def open_video_on_screen(self, target_phrase: str = None, ordinal: int = 1) -> str:
+    def open_video_on_screen(self, target_phrase: str | None = None, ordinal: int = 1) -> str:
         """
         Locates and clicks a video on the screen:
         1. Finds and brings active browser window to front if any browser is running.
@@ -850,7 +863,7 @@ class SystemController:
         pyautogui.click()
         return "Clicked on the first video on screen, sir."
 
-    def search_and_click_video(self, query: str, target_video: str = None) -> str:
+    def search_and_click_video(self, query: str, target_video: str | None = None) -> str:
         """Searches YouTube and uses OCR/visual grounding to click the target video."""
         ensure_default_desktop()
         encoded = urllib.parse.quote(query.strip())
@@ -915,7 +928,7 @@ class SystemController:
 
         return f"Could not locate '{element_text}' on {front_app}, sir."
 
-    def _find_ref_by_name(self, node: dict, target_name: str) -> str:
+    def _find_ref_by_name(self, node: dict, target_name: str) -> str | None:
         name = str(node.get("name", "")).lower()
         desc = str(node.get("description", "")).lower()
         if (target_name in name or target_name in desc) and "ref_id" in node:
@@ -926,7 +939,7 @@ class SystemController:
                 return ref
         return None
 
-    def type_text(self, text: str, target: str = None, press_enter: bool = False) -> str:
+    def type_text(self, text: str, target: str | None = None, press_enter: bool = False) -> str:
         """Types text at current focus or inside a target application."""
         ensure_default_desktop()
         if target:
@@ -966,7 +979,7 @@ class SystemController:
     # -------------------------------------------------------------
     # 7. GMAIL AUTOMATION
     # -------------------------------------------------------------
-    def open_gmail_compose(self, recipient: str = None, subject: str = None, body: str = None) -> str:
+    def open_gmail_compose(self, recipient: str | None = None, subject: str | None = None, body: str | None = None) -> str:
         """Opens Gmail directly to the compose screen with optional recipient and body."""
         url = "https://mail.google.com/mail/?view=cm&fs=1"
         if recipient:
@@ -978,7 +991,7 @@ class SystemController:
         webbrowser.open(url)
         return f"Opened Gmail compose for {recipient if recipient else 'a new message'}, sir."
 
-    def send_gmail_complete(self, recipient: str, subject: str = None, body: str = None) -> str:
+    def send_gmail_complete(self, recipient: str, subject: str | None = None, body: str | None = None) -> str:
         """Opens Gmail compose, writes message, and sends via Ctrl+Enter shortcut."""
         self.open_gmail_compose(recipient=recipient, subject=subject, body=body)
         time.sleep(3.0)  # Wait for compose window to render
@@ -1132,7 +1145,6 @@ class SystemController:
 
         public_ip = "Unavailable"
         try:
-            import urllib.request
             req = urllib.request.Request('https://api.ipify.org?format=json', headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=2.0) as resp:
                 public_ip = json.loads(resp.read().decode())['ip']
@@ -1201,7 +1213,6 @@ class SystemController:
 
     def calculate_math(self, expression: str) -> str:
         """Safely calculates mathematical expression."""
-        import math
         clean_expr = expression.lower().replace("times", "*").replace("x", "*").replace("divided by", "/").replace("plus", "+").replace("minus", "-").replace("percent of", "* 0.01 *")
         clean_expr = re.sub(r'[^0-9\+\-\*\/\(\)\.\s]', '', clean_expr)
         try:
