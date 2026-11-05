@@ -158,3 +158,4 @@ if __name__ == "__main__":
     target = Path(sys.argv[1]) if len(sys.argv) > 1 else NORMALIZED_FILE
     ok = run_validation(target)
     sys.exit(0 if ok else 1)
+

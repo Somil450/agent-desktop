@@ -91,3 +91,4 @@ def create_splits(input_path: Path = INPUT_FILE):
 
 if __name__ == "__main__":
     create_splits()
+

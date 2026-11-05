@@ -64,3 +64,4 @@ All records strictly conform to the unified JARVIS schema:
 | Correction Learning | "I mean Antigravity whenever I say coding application" | Saves preference to user_preferences.jsonl | Preference saved; triggers Antigravity IDE on next call | **PASS** |
 | Hindi / Hinglish | "bhai chrome khol do" | Launches Google Chrome | Launches Chrome via launch_app | **PASS** |
 | Single Keyword 'send' | "send" | Presses Enter key in current window | `press_key('enter')` executed | **PASS** |
+

@@ -66,3 +66,4 @@ def run_deduplication(input_path: Path = INPUT_FILE, output_path: Path = OUTPUT_
 
 if __name__ == "__main__":
     run_deduplication()
+

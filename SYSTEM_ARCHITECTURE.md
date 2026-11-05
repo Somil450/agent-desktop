@@ -1,10 +1,10 @@
 # JARVIS System Architecture
 
-J.A.R.V.I.S. is an offline-first, autonomous desktop AI agent that pairs local multimodal perception and reasoning with Windows system automation.
+J.A.R.V.I.S. is an offline-first, autonomous desktop AI agent that unifies general-purpose conversational reasoning, autonomous software engineering, hybrid visual perception, and Windows system automation into a coordinated agent architecture.
 
 ```
 +---------------------------------------------------------------------------------------------------+
-|                                   J.A.R.V.I.S. DESKTOP AGENT                                      |
+|                                   J.A.R.V.I.S. MULTI-MODE AGENT                                  |
 +---------------------------------------------------------------------------------------------------+
 |  INTERFACES:                                                                                      |
 |  - Real-time Terminal HUD (Rich Live Layout, Audio VU Meter, Hardware Telemetry)                  |
@@ -15,28 +15,28 @@ J.A.R.V.I.S. is an offline-first, autonomous desktop AI agent that pairs local m
                                                   │
                                                   ▼
 +---------------------------------------------------------------------------------------------------+
-|  PERCEPTION & NLU LAYER:                                                                          |
-|  - Wake Word Gate ("Jarvis", "Hey Jarvis", "Ok Jarvis")                                           |
-|  - Experience Recorder (Online correction detection & preference updates)                         |
-|  - Dataset Retriever (BM25 In-Context Learning from 6,293 verified demonstrations)                 |
-|  - Natural Language Planner (Ordered intent patterns, Hindi/Hinglish speech normalization)        |
+|  MULTI-MODE TASK ROUTER (TaskRouter):                                                             |
+|  - GENERAL_ASSISTANT: Philosophy, essays, conceptual explanations, science, math, research        |
+|  - CODE_AGENT: Multi-language programming (Python/Rust/React), project scaffolding, code review   |
+|  - VISUAL_AGENT: Screen perception, HSV color/shape detection, spatial layout, diff verification  |
+|  - DESKTOP_AGENT: OS actions, WhatsApp, Gmail, browser navigation, file management, system volume|
+|  - MULTI_AGENT: Cross-domain coordination (e.g. Inspect project & send WhatsApp summary)         |
 +---------------------------------------------------------------------------------------------------+
-                                                  │
-                                                  ▼
-+---------------------------------------------------------------------------------------------------+
-|  TOOL REGISTRY & AUTOMATION ENGINE (SystemController):                                            |
-|  - Window Management: ensure_default_desktop(), Win32 SetThreadDesktop, SetForegroundWindow       |
-|  - App Management: PowerShell Get-StartApps universal catalog, launch_app with safety guards       |
-|  - Communication: Native WhatsApp Desktop search & chat automation (contact alias resolution)     |
-|  - File Operations: CF_HDROP clipboard format, recursive file search across Downloads/Workspace  |
-|  - Agent Desktop CLI: Accessibility snapshot tree, headed click_element, screenshot               |
-|  - Universal Controls: Browser navigation, media/volume virtual keys, lock_workstation            |
-+---------------------------------------------------------------------------------------------------+
+         │                           │                            │                          │
+         ▼                           ▼                            ▼                          ▼
++------------------+       +------------------+         +-------------------+      +------------------+
+| GENERAL ASSISTANT|       |   CODING AGENT   |         | VISUAL PERCEPTION |      |  DESKTOP ENGINE  |
+| - Essays & Arts  |       | - Project Scaff. |         | - DPI Scaling     |      | - App Catalog    |
+| - Quantum & Math |       | - YOLO Detector  |         | - HSV Masking     |      | - WhatsApp Chat  |
+| - AGI Philosophy |       | - Syntax Check   |         | - Spatial Icons   |      | - File Search    |
+| - Multi-turn Mem |       | - Safe .bak Edits|         | - Watchdog Timer  |      | - Win32 System   |
++------------------+       +------------------+         +-------------------+      +------------------+
                                                   │
                                                   ▼
 +---------------------------------------------------------------------------------------------------+
 |  VERIFICATION & CONTINUAL LEARNING:                                                               |
-|  - Snapshot & PID Verification                                                                    |
+|  - Visual Diff Verification (absdiff change scoring before/after clicks)                          |
+|  - Watchdog Auto-Release (Guaranteed mouse/key release after max duration)                         |
 |  - Experience Log: datasets/raw/user_experience.jsonl                                             |
 |  - Personal Preferences: datasets/JARVIS-NLU-Desktop/user_preferences.jsonl                       |
 +---------------------------------------------------------------------------------------------------+
@@ -44,9 +44,30 @@ J.A.R.V.I.S. is an offline-first, autonomous desktop AI agent that pairs local m
 
 ---
 
-## Key Architectural Principles
+## Core Subsystems
 
-1. **Safety Guards**: `launch_app` strictly rejects natural-language sentences containing action words (`send`, `chat`, `message`) to prevent Windows shell popups.
-2. **Contact Alias Mapping**: Resolves conversational terms (e.g. `mummi`, `mummy`, `maa`) to concrete WhatsApp contact names (`Badii Mummy`) with dedicated search delays.
-3. **No-Guessing Quarantine**: UI actions without semantic labels are quarantined rather than mapped to arbitrary coordinate guesses.
-4. **Offline Resilience**: All speech recognition, text-to-speech, dataset retrieval, and tool execution operate locally with zero cloud dependencies.
+### 1. General-Purpose Assistant Agent (`jarvis/agents/general_assistant.py`)
+- **Unrestricted Conversational Intelligence**: Responds directly to philosophical questions, scientific debates, and academic inquiries without erroneously triggering desktop tools.
+- **Deep Explanations**: Native modules for quantum computing (qubits, superposition, entanglement), theoretical physics, and mathematics.
+- **Multi-Turn Context Tracking**: Maintains rolling conversation history (`history`) for contextual follow-ups.
+- **Structured Essay Generation**: Generates comprehensive multi-section essays on any requested topic.
+
+### 2. Autonomous Coding Agent (`jarvis/agents/code_agent.py`)
+- **Multi-Language Engineering**: Scaffolds and writes applications across Python, Rust, C++, JavaScript/React, and Android.
+- **Production Scaffolding**: Built-in template generator for real-time YOLOv8 object detection pipelines with OpenCV.
+- **Project Diagnostics**: Recursive workspace inspector with `py_compile` syntax validation across source files.
+- **Safe Modifications**: Guaranteed backup creation (`.bak`) before any file modification or overwrite.
+
+### 3. Visual Computer-Use & Perception Subsystem (`jarvis/vision/visual_computer_use.py`)
+- **Per-Monitor DPI Normalization**: Interacts with Windows `SetProcessDpiAwareness` for accurate coordinate calculation across high-DPI displays.
+- **Three-Tier Perception Hierarchy**:
+  1. *Layer 1*: Windows Accessibility API (UIAutomation) for semantic controls (0ms, 100% precision).
+  2. *Layer 2*: Computer Vision (OpenCV HSV masks, Hough circles, spatial geometry) for unlabeled icons and canvas elements.
+  3. *Layer 3*: Local small multimodal model for complex ambiguous scene understanding.
+- **Visual Diff Verification**: Calculates absolute difference (`cv2.absdiff`) between before/after screenshots to empirically confirm action effects.
+- **Safe Input Session Watchdog**: Threaded watchdog timer (default 5.0s) guaranteeing auto-release of held mouse or keyboard inputs.
+
+### 4. Multimodal Model Hardware Evaluator (`jarvis/models/local_models_eval.py`)
+- Profiles local host resources (RAM, CPU cores, GPU vendor, OS).
+- Benchmarks small local multimodal models against Intel Iris Xe + 16GB RAM constraints.
+- Recommends Qwen2.5-VL-3B-Instruct or Qwen2-VL-2B-Instruct (GGUF Q4_K_M) via `llama-cpp-python` / DirectML, while avoiding 7B+ models that cause memory exhaustion.

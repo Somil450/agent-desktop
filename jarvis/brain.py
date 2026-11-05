@@ -18,9 +18,31 @@ import time
 import urllib.parse
 import webbrowser
 
+try:
+    from jarvis.router.task_router import TaskRouter, TaskMode
+    from jarvis.agents.general_assistant import GeneralAssistant
+    from jarvis.agents.code_agent import CodeAgent
+    from jarvis.vision.visual_computer_use import VisualComputerUse
+except ImportError:
+    try:
+        from router.task_router import TaskRouter, TaskMode
+        from agents.general_assistant import GeneralAssistant
+        from agents.code_agent import CodeAgent
+        from vision.visual_computer_use import VisualComputerUse
+    except ImportError:
+        TaskRouter = None
+        TaskMode = None
+        GeneralAssistant = None
+        CodeAgent = None
+        VisualComputerUse = None
+
 class JarvisBrain:
     def __init__(self, github_user="Somil450"):
         self.github_user = github_user
+        self.router = TaskRouter() if TaskRouter else None
+        self.general_assistant = GeneralAssistant() if GeneralAssistant else None
+        self.code_agent = CodeAgent() if CodeAgent else None
+        self.visual_computer = VisualComputerUse() if VisualComputerUse else None
 
     def plan_and_execute(self, text: str, controller) -> str:
         raw = text.strip()
@@ -36,6 +58,20 @@ class JarvisBrain:
         ]:
             if clean.startswith(prefix):
                 clean = clean[len(prefix):].strip().lstrip(",.!? ").strip()
+
+        # -------------------------------------------------------------
+        # 0. MULTI-MODE TASK ROUTING (General, Coding, Visual, Desktop)
+        # -------------------------------------------------------------
+        if self.router:
+            decision = self.router.route(clean)
+            if decision.mode == TaskMode.GENERAL_ASSISTANT and self.general_assistant:
+                return self.general_assistant.respond(raw)
+            elif decision.mode == TaskMode.CODE_AGENT and self.code_agent:
+                return self.code_agent.process(raw)
+            elif decision.mode == TaskMode.VISUAL_AGENT and self.visual_computer:
+                return self.visual_computer.execute_visual_instruction(raw)
+            elif decision.mode == TaskMode.MULTI_AGENT:
+                return self._coordinate_multi_agent(raw, controller)
 
         # -------------------------------------------------------------
         # 1. HIGH-LEVEL COMPOSITE WORKFLOWS (Evaluated First)
@@ -507,3 +543,24 @@ class JarvisBrain:
                     return f"Searching {disp_name} for '{query}', sir."
 
         return None
+
+    def _coordinate_multi_agent(self, raw: str, controller) -> str:
+        """
+        Coordinates complex cross-domain instructions involving multiple agents:
+        e.g. Inspect project and send summary to WhatsApp, or research + code generation.
+        """
+        clean = raw.lower()
+        if "inspect" in clean and any(w in clean for w in ["send", "whatsapp", "message"]):
+            report = self.code_agent.inspect_and_diagnose(self.code_agent.workspace_root)
+            m_wa = re.search(r'(?:to|in)\s+(?:the\s+chat\s+of\s+)?([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?', clean)
+            recipient = m_wa.group(1).strip() if m_wa else "mummi"
+            summary_preview = report.split("\n\n")[0]
+            return controller.send_whatsapp_message(recipient, f"JARVIS Project Inspection Report:\n{summary_preview}")
+        
+        # Default delegate to code agent or general assistant
+        if self.code_agent and any(w in clean for w in ["code", "python", "script", "project", "build"]):
+            return self.code_agent.process(raw)
+        elif self.general_assistant:
+            return self.general_assistant.respond(raw)
+        return "Multi-agent coordination completed."
+

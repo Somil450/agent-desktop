@@ -17,6 +17,10 @@ agent-desktop gives an AI agent computer use without screenshots or pixel matchi
 This fork integrates a full-featured, offline-first voice and keyboard desktop assistant:
 
 ### Core Capabilities
+- **Multi-Mode Task Routing**: Automatically routes instructions between `GENERAL_ASSISTANT`, `CODE_AGENT`, `VISUAL_AGENT`, `DESKTOP_AGENT`, and `MULTI_AGENT`.
+- **General-Purpose AI Conversation**: Explains science, mathematics, writes comprehensive essays (e.g. 500-word essay on space exploration), discusses philosophy of AGI, and tracks multi-turn dialog memory.
+- **Autonomous Coding Agent**: Generates code (Python, Rust, C++, React, Android), scaffolds complete applications (YOLOv8 real-time object detector), inspects syntax health across projects, and performs safe edits with automatic `.bak` backups.
+- **Visual Computer-Use Subsystem**: Locates unlabeled icons, detects color/shape elements (HSV masks, circular buttons), navigates spatial layouts (top-right, third from left), and verifies state changes with visual diffs and watchdog timers.
 - **Universal Application Management**: Auto-discovers installed Windows apps via `Get-StartApps`, focuses, launches, minimizes, or closes them safely.
 - **Native WhatsApp Desktop Automation**: Opens specific contact chats (e.g. *"mummi"*, *"Badii Mummy"*), sends text messages, transfers files/PDFs using `CF_HDROP`, and captures & sends screenshots.
 - **Multilingual NLU**: Handles English, Hindi, and Hinglish speech patterns (e.g. *"bhai chrome khol do"*, *"mummi ko message bhejo"*).
