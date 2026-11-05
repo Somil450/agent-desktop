@@ -1,0 +1,34 @@
+{
+  "omniact": {
+    "dataset_name": "omniact",
+    "license_type": "Apache-2.0",
+    "official_url": "https://huggingface.co/datasets/Writer/omniact",
+    "commercial_use_allowed": true,
+    "attribution_required": true,
+    "notes": "Attributed to Writer/omniact. Full compliance with license terms."
+  },
+  "agentnet": {
+    "dataset_name": "agentnet",
+    "license_type": "CC-BY-4.0",
+    "official_url": "https://huggingface.co/datasets/xlangai/AgentNet",
+    "commercial_use_allowed": true,
+    "attribution_required": true,
+    "notes": "Attributed to xlangai/AgentNet. Full compliance with license terms."
+  },
+  "screenspot_pro": {
+    "dataset_name": "screenspot_pro",
+    "license_type": "Apache-2.0",
+    "official_url": "https://huggingface.co/datasets/likaixin/ScreenSpot-Pro",
+    "commercial_use_allowed": true,
+    "attribution_required": true,
+    "notes": "Attributed to likaixin/ScreenSpot-Pro. Full compliance with license terms."
+  },
+  "windows_agent_arena": {
+    "dataset_name": "windows_agent_arena",
+    "license_type": "MIT",
+    "official_url": "https://github.com/microsoft/WindowsAgentArena",
+    "commercial_use_allowed": true,
+    "attribution_required": true,
+    "notes": "Attributed to microsoft/WindowsAgentArena. Full compliance with license terms."
+  }
+}

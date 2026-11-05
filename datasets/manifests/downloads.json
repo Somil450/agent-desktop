@@ -1,0 +1,728 @@
+{
+  "omniact": {
+    "name": "omniact",
+    "repo_id": "Writer/omniact",
+    "status": "available",
+    "commit_sha": "5e4bcb26745afc8d58ba9519ea9c9fb832386d26",
+    "total_files": 15,
+    "total_size_mb": 398.31,
+    "total_size_gb": 0.39,
+    "windows_files_count": 0,
+    "files": [
+      {
+        "path": ".gitattributes",
+        "size_bytes": 2307,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "README.md",
+        "size_bytes": 1693,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "annotation.zip",
+        "size_bytes": 145394768,
+        "size_mb": 138.66,
+        "is_windows": false
+      },
+      {
+        "path": "combined.json",
+        "size_bytes": 3783043,
+        "size_mb": 3.61,
+        "is_windows": false
+      },
+      {
+        "path": "data.zip",
+        "size_bytes": 259142852,
+        "size_mb": 247.14,
+        "is_windows": false
+      },
+      {
+        "path": "detact_color.zip",
+        "size_bytes": 65100,
+        "size_mb": 0.06,
+        "is_windows": false
+      },
+      {
+        "path": "detact_icon.zip",
+        "size_bytes": 67139,
+        "size_mb": 0.06,
+        "is_windows": false
+      },
+      {
+        "path": "eval.py",
+        "size_bytes": 6124,
+        "size_mb": 0.01,
+        "is_windows": false
+      },
+      {
+        "path": "intro.png",
+        "size_bytes": 1056590,
+        "size_mb": 1.01,
+        "is_windows": false
+      },
+      {
+        "path": "ocr.zip",
+        "size_bytes": 200305,
+        "size_mb": 0.19,
+        "is_windows": false
+      },
+      {
+        "path": "screen_1.png",
+        "size_bytes": 4154692,
+        "size_mb": 3.96,
+        "is_windows": false
+      },
+      {
+        "path": "split.py",
+        "size_bytes": 2937,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "test.json",
+        "size_bytes": 777362,
+        "size_mb": 0.74,
+        "is_windows": false
+      },
+      {
+        "path": "train.json",
+        "size_bytes": 2622183,
+        "size_mb": 2.5,
+        "is_windows": false
+      },
+      {
+        "path": "val.json",
+        "size_bytes": 381290,
+        "size_mb": 0.36,
+        "is_windows": false
+      }
+    ],
+    "license": "Apache-2.0",
+    "url": "https://huggingface.co/datasets/Writer/omniact",
+    "purpose": "Natural language desktop tasks and PyAutoGUI action demonstrations.",
+    "download_policy": "full_metadata_and_annotations"
+  },
+  "agentnet": {
+    "name": "agentnet",
+    "repo_id": "xlangai/AgentNet",
+    "status": "available",
+    "commit_sha": "d76ee50a63fad81cfdbe576416757d7c2091ed50",
+    "total_files": 46,
+    "total_size_mb": 190313.85,
+    "total_size_gb": 185.85,
+    "windows_files_count": 26,
+    "files": [
+      {
+        "path": "ubuntu_images",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "win_mac_images",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": ".gitattributes",
+        "size_bytes": 4863,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "LICENSE.txt",
+        "size_bytes": 1076,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "README.md",
+        "size_bytes": 9925,
+        "size_mb": 0.01,
+        "is_windows": false
+      },
+      {
+        "path": "agentnet_ubuntu_5k.jsonl",
+        "size_bytes": 282313437,
+        "size_mb": 269.24,
+        "is_windows": false
+      },
+      {
+        "path": "agentnet_win_mac_18k.jsonl",
+        "size_bytes": 1400605632,
+        "size_mb": 1335.72,
+        "is_windows": true
+      },
+      {
+        "path": "meta_data_merged.jsonl",
+        "size_bytes": 18840344,
+        "size_mb": 17.97,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z01",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z02",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z03",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z04",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z05",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z06",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z07",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z08",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z09",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z10",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z11",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z12",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.z13",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": false
+      },
+      {
+        "path": "ubuntu_images/images.zip",
+        "size_bytes": 3727419649,
+        "size_mb": 3554.74,
+        "is_windows": false
+      },
+      {
+        "path": "win_mac_images/images.z01",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z02",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z03",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z04",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z05",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z06",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z07",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z08",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z09",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z10",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z11",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z12",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z13",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z14",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z15",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z16",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z17",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z18",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z19",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z20",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z21",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z22",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.z23",
+        "size_bytes": 5368709120,
+        "size_mb": 5120.0,
+        "is_windows": true
+      },
+      {
+        "path": "win_mac_images/images.zip",
+        "size_bytes": 855815467,
+        "size_mb": 816.17,
+        "is_windows": true
+      }
+    ],
+    "license": "CC-BY-4.0",
+    "url": "https://huggingface.co/datasets/xlangai/AgentNet",
+    "purpose": "Human-annotated multi-step computer-use trajectories across OSes.",
+    "download_policy": "selective_windows_trajectories"
+  },
+  "screenspot_pro": {
+    "name": "screenspot_pro",
+    "repo_id": "likaixin/ScreenSpot-Pro",
+    "status": "available",
+    "commit_sha": "210e78d3844251110bff86c95835ebd37a6930fa",
+    "total_files": 1647,
+    "total_size_mb": 3219.56,
+    "total_size_gb": 3.14,
+    "windows_files_count": 963,
+    "files": [
+      {
+        "path": "annotations",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "images",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "images/android_studio_mac",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "images/autocad_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/blender_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/common_linux",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "images/common_mac",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "images/common_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/davinci_mac",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "images/eviews_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/excel_mac",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "images/fruitloops_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/illustrator_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/inventor_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/matlab_mac",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "images/origin_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/photoshop_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/ppt_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/premiere_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/pycharm_mac",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "images/quartus_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/solidworks_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/stata_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/unreal_engine_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/vivado_windows",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": true
+      },
+      {
+        "path": "images/vmware_mac",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "images/vscode_mac",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "images/word_mac",
+        "size_bytes": 0,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": ".DS_Store",
+        "size_bytes": 10244,
+        "size_mb": 0.01,
+        "is_windows": false
+      },
+      {
+        "path": ".gitattributes",
+        "size_bytes": 2461,
+        "size_mb": 0.0,
+        "is_windows": false
+      },
+      {
+        "path": "README.md",
+        "size_bytes": 5278,
+        "size_mb": 0.01,
+        "is_windows": false
+      },
+      {
+        "path": "annotate.html",
+        "size_bytes": 12645,
+        "size_mb": 0.01,
+        "is_windows": false
+      },
+      {
+        "path": "annotations/android_studio_macos.json",
+        "size_bytes": 47119,
+        "size_mb": 0.04,
+        "is_windows": false
+      },
+      {
+        "path": "annotations/autocad_windows.json",
+        "size_bytes": 16617,
+        "size_mb": 0.02,
+        "is_windows": true
+      },
+      {
+        "path": "annotations/blender_windows.json",
+        "size_bytes": 38283,
+        "size_mb": 0.04,
+        "is_windows": true
+      },
+      {
+        "path": "annotations/davinci_macos.json",
+        "size_bytes": 21370,
+        "size_mb": 0.02,
+        "is_windows": false
+      },
+      {
+        "path": "annotations/eviews_windows.json",
+        "size_bytes": 25245,
+        "size_mb": 0.02,
+        "is_windows": true
+      },
+      {
+        "path": "annotations/excel_macos.json",
+        "size_bytes": 32785,
+        "size_mb": 0.03,
+        "is_windows": false
+      },
+      {
+        "path": "annotations/fruitloops_windows.json",
+        "size_bytes": 29594,
+        "size_mb": 0.03,
+        "is_windows": true
+      },
+      {
+        "path": "annotations/illustrator_windows.json",
+        "size_bytes": 16274,
+        "size_mb": 0.02,
+        "is_windows": true
+      },
+      {
+        "path": "annotations/inventor_windows.json",
+        "size_bytes": 34435,
+        "size_mb": 0.03,
+        "is_windows": true
+      },
+      {
+        "path": "annotations/linux_common_linux.json",
+        "size_bytes": 26077,
+        "size_mb": 0.02,
+        "is_windows": false
+      },
+      {
+        "path": "annotations/macos_common_macos.json",
+        "size_bytes": 33073,
+        "size_mb": 0.03,
+        "is_windows": false
+      },
+      {
+        "path": "annotations/matlab_macos.json",
+        "size_bytes": 46826,
+        "size_mb": 0.04,
+        "is_windows": false
+      },
+      {
+        "path": "annotations/origin_windows.json",
+        "size_bytes": 31921,
+        "size_mb": 0.03,
+        "is_windows": true
+      },
+      {
+        "path": "annotations/photoshop_windows.json",
+        "size_bytes": 26382,
+        "size_mb": 0.03,
+        "is_windows": true
+      },
+      {
+        "path": "annotations/powerpoint_windows.json",
+        "size_bytes": 41403,
+        "size_mb": 0.04,
+        "is_windows": true
+      },
+      {
+        "path": "annotations/premiere_windows.json",
+        "size_bytes": 27046,
+        "size_mb": 0.03,
+        "is_windows": true
+      },
+      {
+        "path": "annotations/pycharm_macos.json",
+        "size_bytes": 40484,
+        "size_mb": 0.04,
+        "is_windows": false
+      },
+      {
+        "path": "annotations/quartus_windows.json",
+        "size_bytes": 22925,
+        "size_mb": 0.02,
+        "is_windows": true
+      }
+    ],
+    "license": "Apache-2.0",
+    "url": "https://huggingface.co/datasets/likaixin/ScreenSpot-Pro",
+    "purpose": "Professional application GUI element localization & grounding.",
+    "download_policy": "selective_windows_annotations"
+  },
+  "windows_agent_arena": {
+    "name": "windows_agent_arena",
+    "repo_id": "microsoft/WindowsAgentArena",
+    "status": "available",
+    "default_branch": "main",
+    "stars": 915,
+    "license": "MIT License",
+    "url": "https://github.com/microsoft/WindowsAgentArena",
+    "purpose": "Windows desktop task evaluation benchmarks & task definitions.",
+    "download_policy": "evaluation_tasks_and_benchmarks",
+    "size_kb": 200247
+  }
+}

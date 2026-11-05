@@ -19,6 +19,8 @@ from controller import SystemController
 from listener import VoiceListener
 from monitor import JarvisHUD
 from brain import JarvisBrain
+from learning.experience_recorder import ExperienceRecorder
+from retrieval.dataset_retriever import DatasetRetriever
 
 WAKE_WORDS = ["jarvis", "hey jarvis", "ok jarvis", "hello jarvis", "hi jarvis", "yo jarvis"]
 
@@ -48,11 +50,13 @@ class Jarvis:
         self.listener = VoiceListener()
         self.hud = JarvisHUD()
         self.brain = JarvisBrain(github_user="Somil450")
+        self.experience = ExperienceRecorder(authorized=True)
+        self.retriever = DatasetRetriever()
         self.running = True
         self.last_telemetry = self.controller.get_system_diagnostics()
 
     def process_command(self, cmd: str) -> str:
-        """Processes command using the autonomous brain."""
+        """Processes command using the autonomous brain & experience recorder."""
         clean = cmd.lower().strip()
         
         # Stop / Shutdown commands
@@ -64,7 +68,35 @@ class Jarvis:
             self.running = False
             return "Powering down systems. Have a good evening, sir."
 
-        return self.brain.plan_and_execute(cmd, self.controller)
+        # 1. Detect user corrections / preference updates
+        correction = self.experience.detect_and_apply_correction(clean)
+        if correction:
+            pref_msg = f"Understood, sir. I have saved your preference: whenever you say '{correction['trigger']}', I will use '{correction['target']}'."
+            self.experience.record_interaction(
+                instruction=cmd,
+                intent="preference_update",
+                steps=[{"tool": "save_preference", "arguments": {"trigger": correction["trigger"], "target": correction["target"]}}],
+                outcome=pref_msg,
+                verified=True,
+                verification_evidence=["user_preference_saved"]
+            )
+            return pref_msg
+
+        # 2. Plan and execute via brain
+        response = self.brain.plan_and_execute(cmd, self.controller)
+
+        # 3. Record interaction in autonomous experience dataset
+        is_success = "error" not in response.lower() and "failed" not in response.lower() and "sorry" not in response.lower()
+        self.experience.record_interaction(
+            instruction=cmd,
+            intent="desktop_task",
+            steps=[],
+            outcome=response,
+            verified=is_success,
+            verification_evidence=["action_executed" if is_success else "execution_failed"]
+        )
+
+        return response
 
     def start(self):
         """Starts the JARVIS HUD display and main voice monitoring loop."""

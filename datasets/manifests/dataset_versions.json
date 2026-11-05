@@ -1,0 +1,30 @@
+{
+  "omniact": {
+    "source": "https://huggingface.co/datasets/Writer/omniact",
+    "commit_or_branch": "5e4bcb26745afc8d58ba9519ea9c9fb832386d26",
+    "status": "available",
+    "license": "Apache-2.0",
+    "policy": "full_metadata_and_annotations"
+  },
+  "agentnet": {
+    "source": "https://huggingface.co/datasets/xlangai/AgentNet",
+    "commit_or_branch": "d76ee50a63fad81cfdbe576416757d7c2091ed50",
+    "status": "available",
+    "license": "CC-BY-4.0",
+    "policy": "selective_windows_trajectories"
+  },
+  "screenspot_pro": {
+    "source": "https://huggingface.co/datasets/likaixin/ScreenSpot-Pro",
+    "commit_or_branch": "210e78d3844251110bff86c95835ebd37a6930fa",
+    "status": "available",
+    "license": "Apache-2.0",
+    "policy": "selective_windows_annotations"
+  },
+  "windows_agent_arena": {
+    "source": "https://github.com/microsoft/WindowsAgentArena",
+    "commit_or_branch": "main",
+    "status": "available",
+    "license": "MIT License",
+    "policy": "evaluation_tasks_and_benchmarks"
+  }
+}

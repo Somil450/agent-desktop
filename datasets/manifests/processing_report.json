@@ -1,0 +1,57 @@
+{
+  "datasets": {
+    "omniact": {
+      "source_url": "https://huggingface.co/datasets/Writer/omniact",
+      "license": "Apache-2.0",
+      "downloaded_size_mb": 152.88,
+      "total_available_examples": 9802,
+      "selected_windows_examples": 9802,
+      "successfully_converted": 88,
+      "rejected_or_quarantined": 9714,
+      "quarantine_reason": "Pixel-only coordinates without semantic accessibility labels (adhering to no-guessing policy)"
+    },
+    "agentnet": {
+      "source_url": "https://huggingface.co/datasets/xlangai/AgentNet",
+      "license": "CC-BY-4.0",
+      "downloaded_size_mb": 20.21,
+      "total_available_examples": 22532,
+      "selected_windows_examples": 12373,
+      "successfully_converted": 8092,
+      "rejected_or_quarantined": 4281,
+      "quarantine_reason": "Non-Windows OS (Darwin/Ubuntu) or ambiguous multi-app coordinate gestures"
+    },
+    "screenspot_pro": {
+      "source_url": "https://huggingface.co/datasets/likaixin/ScreenSpot-Pro",
+      "license": "Apache-2.0",
+      "downloaded_size_mb": 0.77,
+      "total_available_examples": 1619,
+      "selected_windows_examples": 927,
+      "successfully_converted": 927,
+      "rejected_or_quarantined": 0,
+      "quarantine_reason": "None - 100% of Windows professional UI annotations cleanly grounded"
+    },
+    "windows_agent_arena": {
+      "source_url": "https://github.com/microsoft/WindowsAgentArena",
+      "license": "MIT",
+      "downloaded_size_mb": 4.37,
+      "total_available_examples": 308,
+      "selected_windows_examples": 152,
+      "successfully_converted": 81,
+      "rejected_or_quarantined": 71,
+      "quarantine_reason": "Incomplete configuration scripts or container-only setups"
+    }
+  },
+  "totals": {
+    "total_scanned_raw": 23254,
+    "total_normalized_valid": 9188,
+    "total_unique_deduplicated": 8973,
+    "total_quarantined": 14066,
+    "validation_pass_rate_percent": 100.0,
+    "splits": {
+      "train": 6272,
+      "validation": 1339,
+      "test": 1362,
+      "leakage_overlap_count": 0
+    }
+  }
+}

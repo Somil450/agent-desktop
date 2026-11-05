@@ -88,3 +88,15 @@ probes/windows/22-capture-clipboard/bin/
 # probes/windows/NN-*/captures/ commit their twins beside the capture.
 probes/*/captures/**/*.normalized
 npm/bin/.launcher-notice-*
+
+# Datasets: exclude raw multi-gigabyte downloads & images
+datasets/external/**
+!datasets/external/**/README.md
+!datasets/external/**/LICENSE*
+!datasets/external/**/metadata.json
+datasets/raw/**
+*.z[0-9][0-9]
+*.tar
+*.tar.gz
+*.iso
+*.img
