@@ -110,7 +110,7 @@ class TaskRouter:
 
         # 5. Question/Explanation fallback for "what is", "how does", "why is" if not desktop automation
         if any(clean.startswith(w) for w in ["what is ", "what are ", "why is ", "how does ", "explain ", "tell me about ", "who was "]):
-            if not any(w in clean for w in ["open", "launch", "chrome", "whatsapp", "file", "download"]):
+            if not any(w in clean for w in ["open", "launch", "chrome", "whatsapp", "file", "download", "my ip", "ip", "time", "date", "battery", "storage"]):
                 return RouteDecision(
                     mode=TaskMode.GENERAL_ASSISTANT,
                     confidence=0.88,

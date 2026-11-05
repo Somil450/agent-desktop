@@ -53,6 +53,12 @@ class JarvisBrain:
         self.visual_computer = VisualComputerUse() if VisualComputerUse else None
         self.llm_brain = LocalLLMBrain() if LocalLLMBrain else None
 
+        # Conversational context memory across multi-turn interactions
+        self.active_app = None
+        self.active_chat = None
+        self.last_query = None
+        self.last_action_type = None
+
     def plan_and_execute(self, text: str, controller) -> str:
         raw = text.strip()
         clean = raw.lower()
@@ -69,9 +75,16 @@ class JarvisBrain:
                 clean = clean[len(prefix):].strip().lstrip(",.!? ").strip()
 
         # -------------------------------------------------------------
-        # 0. MULTI-MODE TASK ROUTING (General, Coding, Visual, Desktop)
+        # 0. CONVERSATIONAL FOLLOW-UP & MULTI-MODE TASK ROUTING
         # -------------------------------------------------------------
-        if self.router:
+        # Short-circuit desktop follow-up context and telemetry so it is not hijacked by TaskRouter
+        is_desktop_followup = (
+            any(w in clean for w in ["in this chat", "to this chat", "video here", "first video", "this video", "open video", "click video", "play video", "my ip", "ip address", "wifi", "battery"])
+            or (self.active_chat and any(clean.startswith(w) for w in ["send ", "now send ", "type ", "write "]))
+            or (self.active_app == "whatsapp" and any(clean.startswith(w) for w in ["open chat", "chat of", "chat with", "send ", "now send "]))
+        )
+
+        if not is_desktop_followup and self.router:
             decision = self.router.route(clean)
             if decision.mode == TaskMode.GENERAL_ASSISTANT and self.general_assistant:
                 return self.general_assistant.respond(raw)
@@ -143,15 +156,17 @@ class JarvisBrain:
             caption = m_snap_wa.group(2).strip() if m_snap_wa.group(2) else None
             return controller.send_screenshot_to_whatsapp(person, caption)
 
-        # Workflow 5: Open WhatsApp + Navigate to Chat + Send
+        # Workflow 5: Open WhatsApp + Navigate to Chat + Send (e.g. "open whatsapp chat of papa and send hello")
         m_wa_open_send = re.search(
-            r'(?:go\s+to\s+whatsapp|open\s+whatsapp)\s+(?:and\s+)?(?:open|go\s+to)\s+(?:the\s+)?chat\s+(?:of|with)\s+'
-            r'([a-zA-Z0-9_\s]+?)(?:\s+(?:and\s+send|saying|type|and\s+type|and\s+say)\s+(.+))?$',
+            r'^(?:go\s+to\s+whatsapp\s+|open\s+whatsapp\s+)?(?:and\s+)?(?:(?:open|go\s+to)\s+)?(?:the\s+)?chat\s+(?:of|with)\s+'
+            r'([a-zA-Z0-9_\s]+?)(?:\s+(?:and\s+send|saying|type|and\s+type|and\s+say|send)\s+(.+))?$',
             clean
         )
         if m_wa_open_send:
             person = m_wa_open_send.group(1).strip().replace(" on whatsapp", "").strip()
             msg = m_wa_open_send.group(2).strip() if m_wa_open_send.group(2) else None
+            self.active_app = "whatsapp"
+            self.active_chat = person
             if msg and "screenshot" in msg:
                 caption = re.sub(r'^(?:this\s+)?screenshot\s*(?:and\s+)?(?:type|say|saying|with\s+message)?\s*', '', msg).strip()
                 caption = caption if caption and caption != "screenshot" else None
@@ -184,10 +199,24 @@ class JarvisBrain:
             ide = m_clone_open.group(2).strip() if m_clone_open.group(2) else "antigravity"
             return controller.clone_and_open_repo(repo, ide=ide)
 
+        # Workflow 8: YouTube Search + Click/Play Video
+        # e.g. "open youtube and search for horror movie and click on this anabella movie"
+        # e.g. "open youtube search horror movie and play the first video"
+        m_yt_search_click = re.search(
+            r'^(?:open\s+youtube|go\s+to\s+youtube)\s+(?:and\s+)?(?:search\s+(?:for\s+)?(.+?))\s+(?:and\s+)?(?:click\s+(?:on\s+)?(?:this\s+)?|play\s+(?:this\s+)?|open\s+(?:this\s+)?)(.+)$',
+            clean
+        )
+        if m_yt_search_click:
+            query = m_yt_search_click.group(1).strip()
+            target_vid = m_yt_search_click.group(2).strip()
+            self.active_app = "youtube"
+            self.last_query = query
+            return controller.search_and_click_video(query, target_vid)
+
         # -------------------------------------------------------------
         # 2. SEQUENTIAL MULTI-STEP CHAINING ("and then", "then", "after that", "and also")
         # -------------------------------------------------------------
-        split_pattern = r'\s+(?:and\s+then|then|after\s+that|and\s+also)\s+|\s+and\s+(?=(?:open|launch|go\s+to|search|take|capture|copy|paste|click|send|type|press|lock|turn))\s+'
+        split_pattern = r'\s+(?:and\s+then|then|after\s+that|and\s+also)\s+|\s+and\s+(?=(?:open|launch|go\s+to|search|take|capture|copy|paste|click|play|send|type|press|lock|turn)\b)'
         if not clean.startswith("say ") and not clean.startswith("type "):
             if re.search(split_pattern, clean):
                 sub_steps = [s.strip() for s in re.split(split_pattern, clean) if s.strip()]
@@ -281,11 +310,22 @@ class JarvisBrain:
             return controller.read_clipboard_text() if controller else "Clipboard empty."
 
         # -------------------------------------------------------------
-        # A. WHATSAPP CHAT & SENDING MESSAGES
-        # Broad natural-language patterns: "send X to Y", "message Y saying X",
-        # "open whatsapp chat of Y and say X", "whatsapp Y: X" etc.
-        # Order: most-specific first to avoid false matches.
+        # A. WHATSAPP CHAT & CONTEXT-AWARE MESSAGING
         # -------------------------------------------------------------
+        # Pattern A0: Context-aware follow-up: "now send hello in this chat", "send hello in this chat", "send hello"
+        m_send_this = re.search(
+            r'^(?:now\s+)?(?:send|type|write)\s+(.+?)(?:\s+(?:in|to)\s+(?:this\s+)?chat)?(?:\s+(?:and\s+)?(?:send|press\s+enter))?$',
+            clean
+        )
+        if m_send_this and ("chat" in clean or self.active_chat or self.active_app == "whatsapp"):
+            raw_msg = m_send_this.group(1).strip()
+            msg = re.sub(r'\s+(?:in|to)\s+(?:this\s+)?chat$', '', raw_msg).strip()
+            if self.active_chat:
+                return controller.open_whatsapp_chat(self.active_chat, msg)
+            elif self.active_app == "whatsapp":
+                return controller.send_whatsapp_message_in_active_chat(msg)
+            else:
+                return controller.type_text(msg, press_enter=True)
 
         # Pattern A1: "send hello in the chat of mummi" (most specific — has 'chat of')
         m_send_chat_of = re.search(
@@ -294,6 +334,8 @@ class JarvisBrain:
         if m_send_chat_of:
             msg = m_send_chat_of.group(1).strip()
             person = m_send_chat_of.group(2).strip()
+            self.active_app = "whatsapp"
+            self.active_chat = person
             if "screenshot" in msg:
                 return controller.send_screenshot_to_whatsapp(person, None)
             return controller.open_whatsapp_chat(person, msg)
@@ -303,6 +345,8 @@ class JarvisBrain:
         if m_send1:
             msg = m_send1.group(1).strip()
             person = m_send1.group(2).strip().replace(" on whatsapp", "").strip()
+            self.active_app = "whatsapp"
+            self.active_chat = person
             if "screenshot" in msg:
                 caption = re.sub(r'^(?:this\s+)?screenshot\s*(?:and\s+)?(?:type|say|saying|with\s+message)?\s*', '', msg).strip()
                 caption = caption if caption and caption != "screenshot" else None
@@ -314,6 +358,8 @@ class JarvisBrain:
         if m_send1b:
             person = m_send1b.group(1).strip().replace(" on whatsapp", "").strip()
             msg = m_send1b.group(2).strip()
+            self.active_app = "whatsapp"
+            self.active_chat = person
             if "screenshot" in msg:
                 caption = re.sub(r'^(?:this\s+)?screenshot\s*(?:and\s+)?(?:type|say|saying|with\s+message)?\s*', '', msg).strip()
                 caption = caption if caption and caption != "screenshot" else None
@@ -327,7 +373,9 @@ class JarvisBrain:
         if m_simple_send:
             msg = m_simple_send.group(1).strip()
             person = m_simple_send.group(2).strip().replace("on whatsapp", "").strip()
-            if person and person not in ["screen", "browser", "desktop", "all", "this", "me"]:
+            if person and person not in ["screen", "browser", "desktop", "all", "this", "me", "chat", "this chat"]:
+                self.active_app = "whatsapp"
+                self.active_chat = person
                 if "screenshot" in msg:
                     return controller.send_screenshot_to_whatsapp(person, None)
                 return controller.open_whatsapp_chat(person, msg)
@@ -340,29 +388,66 @@ class JarvisBrain:
             person = m_message_saying.group(1).strip()
             msg = m_message_saying.group(2).strip()
             if person and msg and person not in ["him", "her", "them", "it"]:
+                self.active_app = "whatsapp"
+                self.active_chat = person
                 return controller.open_whatsapp_chat(person, msg)
 
-        m_open_chat = re.search(r'(?:open\s+)?(?:whatsapp\s+)?chat\s+(?:of|with)\s+([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?(?:\s+(?:and\s+send|saying|and\s+say)\s+(.+))?$', clean)
+        # Pattern A6: Open chat with person: "open chat of papa", "chat of papa", "open papa chat", "papa chat", "open chat with papa"
+        m_chat_of = re.search(
+            r'^(?:(?:go\s+to|open|switch\s+to)\s+)?(?:the\s+)?chat\s+(?:of|with)\s+([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?(?:\s+(?:and\s+send|saying|and\s+say|send)\s+(.+))?$',
+            clean
+        )
+        m_person_chat = re.search(
+            r'^(?:(?:go\s+to|open|switch\s+to)\s+)?([a-zA-Z0-9_]+)\s+chat(?:\s+(?:and\s+send|saying|and\s+say|send)\s+(.+))?$',
+            clean
+        )
+        m_open_chat = m_chat_of or m_person_chat
         if m_open_chat:
             person = m_open_chat.group(1).strip()
-            msg = m_open_chat.group(2).strip() if m_open_chat.group(2) else None
-            if person and person not in ["chat", "whatsapp", "the app"]:
+            msg = m_open_chat.group(2).strip() if len(m_open_chat.groups()) >= 2 and m_open_chat.group(2) else None
+            if person and person not in ["chat", "whatsapp", "the app", "this", "all"]:
+                self.active_app = "whatsapp"
+                self.active_chat = person
+                if msg and "screenshot" in msg:
+                    return controller.send_screenshot_to_whatsapp(person, None)
                 return controller.open_whatsapp_chat(person, msg)
 
         m_msg = re.search(r'(?:message|text)\s+([a-zA-Z0-9_\s]+?)(?:\s+on\s+whatsapp)?\s+(?:saying|and\s+say|with)\s+(.+)$', clean)
         if m_msg:
             person = m_msg.group(1).strip()
             msg = m_msg.group(2).strip()
+            self.active_app = "whatsapp"
+            self.active_chat = person
             return controller.open_whatsapp_chat(person, msg)
 
         m_send_snap = re.search(r'send\s+(?:this\s+)?screenshot\s+(?:to|in)\s+(?:the\s+chat\s+of\s+)?([a-zA-Z0-9_\s]+?)(?:\s+saying\s+(.+))?$', clean)
         if m_send_snap:
             person = m_send_snap.group(1).strip()
             caption = m_send_snap.group(2).strip() if m_send_snap.group(2) else None
+            self.active_app = "whatsapp"
+            self.active_chat = person
             return controller.send_screenshot_to_whatsapp(person, caption)
 
         if clean in ["open whatsapp", "launch whatsapp", "whatsapp"]:
+            self.active_app = "whatsapp"
             return controller.launch_app("whatsapp")
+
+        # -------------------------------------------------------------
+        # A2. VISUAL VIDEO GROUNDING & PLAYBACK
+        # -------------------------------------------------------------
+        # e.g. "open the video here", "click on this video", "open video", "play this video", "click on the first video", "play the video", "click on the second video"
+        m_vid_direct = re.search(
+            r'^(?:open|click|play|start)\s+(?:on\s+)?(?:the\s+|this\s+)?(?:first|1st|second|2nd|third|3rd)?\s*video(?:\s+here)?(?:\s+(?:named|titled|called)\s+(.+))?$',
+            clean
+        )
+        if m_vid_direct or any(phrase in clean for phrase in ["open the video", "click on the video", "click on this video", "play this video", "open video here", "play video here", "open first video", "click first video", "open video"]):
+            ordinal = 1
+            if "second" in clean or "2nd" in clean:
+                ordinal = 2
+            elif "third" in clean or "3rd" in clean:
+                ordinal = 3
+            named_target = m_vid_direct.group(1).strip() if (m_vid_direct and m_vid_direct.group(1)) else None
+            return controller.open_video_on_screen(target_phrase=named_target, ordinal=ordinal)
 
         # -------------------------------------------------------------
         # B. CLIPBOARD OPERATIONS (COPY / PASTE)
@@ -492,11 +577,13 @@ class JarvisBrain:
         }
         for name, url in web_services.items():
             if f"open {name}" in clean or f"go to {name}" in clean or clean == name:
+                self.active_app = name
                 webbrowser.open(url)
                 return f"Opening {name.title()} in your browser, sir."
 
         m_goto_url = re.search(r'^(?:go\s+to|open)\s+(?:website\s+|site\s+)?([a-zA-Z0-9\-]+\.[a-zA-Z]{2,}(?:/[^\s]*)?)$', clean)
         if m_goto_url:
+            self.active_app = "browser"
             return controller.open_url(m_goto_url.group(1))
 
         # -------------------------------------------------------------
@@ -507,6 +594,7 @@ class JarvisBrain:
             search_query = m_chrome_search.group(1)
             goto_url = m_chrome_search.group(2)
             profile = m_chrome_search.group(3) or ("anand" if "anand" in clean else "somil")
+            self.active_app = "browser"
             if search_query:
                 url = f"https://www.google.com/search?q={urllib.parse.quote(search_query.strip())}"
                 return controller.launch_chrome(profile=profile, url=url)
@@ -521,10 +609,15 @@ class JarvisBrain:
         if search_match:
             query = search_match.group(1).strip()
             if not any(a in query for a in ["folder", "file", "app", "pdf", "doc"]):
+                if self.active_app == "youtube":
+                    encoded = urllib.parse.quote(query)
+                    webbrowser.open(f"https://www.youtube.com/results?search_query={encoded}")
+                    return f"Searching YouTube for '{query}', sir."
                 return controller.search_web(query)
 
         if "open chrome" in clean or "launch chrome" in clean or clean in ["chrome", "google chrome"]:
             profile = "anand" if "anand" in clean else "somil"
+            self.active_app = "browser"
             return controller.launch_chrome(profile=profile)
 
         # -------------------------------------------------------------
@@ -576,10 +669,12 @@ class JarvisBrain:
         # -------------------------------------------------------------
         if clean.startswith("open ") or clean.startswith("launch "):
             target = clean.replace("open ", "").replace("launch ", "").strip()
+            self.active_app = target
             return controller.launch_app(target)
 
         if clean.startswith("switch to ") or clean.startswith("bring up "):
             target = clean.replace("switch to ", "").replace("bring up ", "").strip()
+            self.active_app = target
             return controller.focus_window_by_name(target)
 
         # -------------------------------------------------------------

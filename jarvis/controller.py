@@ -25,6 +25,14 @@ from PIL import Image
 import win32clipboard
 import win32con
 
+try:
+    from jarvis.vision.visual_computer_use import VisualComputerUse
+except ImportError:
+    try:
+        from vision.visual_computer_use import VisualComputerUse
+    except ImportError:
+        VisualComputerUse = None
+
 # Disable PyAutoGUI failsafe to avoid mouse-corner crash
 pyautogui.FAILSAFE = False
 
@@ -67,6 +75,7 @@ class SystemController:
         ensure_default_desktop()
         self._installed_apps = []
         self._load_installed_apps()
+        self.visual_computer = VisualComputerUse() if VisualComputerUse else None
 
     def _load_installed_apps(self):
         """Loads all installed Windows applications via Get-StartApps."""
@@ -687,12 +696,93 @@ class SystemController:
             return f"Failed to execute installer '{filename}': {e}"
 
     # -------------------------------------------------------------
-    # 6. DIRECT UI INTERACTIONS (CLICK, TYPE, PRESS KEYS)
+    # 6. DIRECT UI INTERACTIONS (CLICK, TYPE, PRESS KEYS, VIDEO GROUNDING)
     # -------------------------------------------------------------
+    def open_video_on_screen(self, target_phrase: str = None, ordinal: int = 1) -> str:
+        """
+        Locates and clicks a video on the screen:
+        1. Finds and brings active browser window to front if any browser is running.
+        2. Uses VisualComputerUse & winocr to visually ground video cards / titles.
+        3. Clicks target coordinates.
+        4. Falls back to accessibility tree inspection or standard result area coordinate.
+        """
+        ensure_default_desktop()
+        windows = self.list_windows()
+        browser_id = None
+        for w in windows:
+            title = w.get("title", "").lower()
+            app = w.get("app_name", "").lower()
+            if any(b in app for b in ["chrome", "msedge", "edge", "firefox", "brave"]) or any(t in title for t in ["youtube", "google search", "video"]):
+                browser_id = w.get("id")
+                break
+
+        if browser_id:
+            self.focus_window_by_id(browser_id)
+            time.sleep(0.4)
+
+        # 1. Visual computer use / OCR detection
+        if self.visual_computer:
+            target = self.visual_computer.find_video_cards_on_screen(query=target_phrase, ordinal=ordinal)
+            if target:
+                self.visual_computer.click_coordinate(target["x"], target["y"])
+                return f"Opening video '{target['title']}', sir."
+
+            # Also try general text on screen if specific phrase given
+            if target_phrase:
+                text_target = self.visual_computer.find_text_on_screen(target_phrase)
+                if text_target:
+                    self.visual_computer.click_coordinate(text_target["x"], text_target["y"])
+                    return f"Clicked on '{text_target['text']}' to open the video, sir."
+
+        # 2. Accessibility tree inspection
+        if browser_id:
+            snap = self.run_agent_desktop(["snapshot", "--window-id", browser_id, "-i"])
+            if snap.get("ok"):
+                tree = snap.get("data", {}).get("tree", {})
+                search_term = (target_phrase or "video").lower()
+                matched_ref = self._find_ref_by_name(tree, search_term)
+                if matched_ref:
+                    res = self.run_agent_desktop(["click", matched_ref, "--headed"])
+                    if res.get("ok"):
+                        return f"Opened video '{target_phrase or 'search result'}' via browser controls, sir."
+
+        # 3. Spatial coordinate fallback for primary video thumbnail
+        screen_w, screen_h = pyautogui.size()
+        fallback_x = int(screen_w * 0.28)
+        fallback_y = int(screen_h * 0.38)
+        pyautogui.moveTo(fallback_x, fallback_y, duration=0.25)
+        pyautogui.click()
+        return "Clicked on the first video on screen, sir."
+
+    def search_and_click_video(self, query: str, target_video: str = None) -> str:
+        """Searches YouTube and uses OCR/visual grounding to click the target video."""
+        ensure_default_desktop()
+        encoded = urllib.parse.quote(query.strip())
+        url = f"https://www.youtube.com/results?search_query={encoded}"
+        self.launch_chrome(profile="somil", url=url)
+        time.sleep(2.8)  # Allow YouTube results to render
+        return self.open_video_on_screen(target_phrase=target_video)
+
+    def send_whatsapp_message_in_active_chat(self, message: str) -> str:
+        """Sends a message directly into the currently active WhatsApp chat."""
+        ensure_default_desktop()
+        self.focus_window_by_name("WhatsApp")
+        time.sleep(0.3)
+        pyperclip.copy(message)
+        pyautogui.hotkey('ctrl', 'v')
+        time.sleep(0.3)
+        pyautogui.press('enter')
+        return f"Sent '{message}' in WhatsApp chat, sir."
+
     def click_element(self, element_text: str) -> str:
-        """Finds any UI element matching text in the active window and clicks it."""
+        """Finds any UI element matching text in the active window or via OCR and clicks it."""
         ensure_default_desktop()
         clean = element_text.lower().strip()
+
+        # Check if video click requested
+        if any(w in clean for w in ["video", "movie", "play this", "open video", "anabella", "annabelle"]):
+            return self.open_video_on_screen(target_phrase=clean)
+
         windows = self.list_windows()
         if not windows:
             return "No active window found to click on, sir."
@@ -706,6 +796,13 @@ class SystemController:
                 res = self.run_agent_desktop(["click", matched_ref, "--headed"])
                 if res.get("ok"):
                     return f"Clicked '{element_text}' on {front_app}, sir."
+
+        # OCR visual search fallback: find text on live screen
+        if self.visual_computer:
+            res = self.visual_computer.click_text(element_text)
+            if res.get("status") == "success":
+                found = res.get("target", {}).get("text", element_text)
+                return f"Visually located '{found}' and clicked it, sir."
 
         # Common application shortcuts
         if "compose" in clean:

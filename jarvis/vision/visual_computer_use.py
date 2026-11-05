@@ -14,6 +14,7 @@ import re
 import time
 import ctypes
 import threading
+import difflib
 from pathlib import Path
 from typing import Tuple, List, Dict, Optional
 import numpy as np
@@ -21,6 +22,11 @@ import cv2
 import pyautogui
 import subprocess
 from PIL import Image
+
+try:
+    import winocr
+except ImportError:
+    winocr = None
 
 # Ensure PyAutoGUI fail-safe is enabled for user emergency stop (move mouse to top-left corner)
 pyautogui.FAILSAFE = True
@@ -359,14 +365,237 @@ class VisualComputerUse:
             "visual_diff_score": round(diff_score, 4)
         }
 
+    def find_text_on_screen(self, target_text: str, fuzzy: bool = True) -> Optional[Dict]:
+        """
+        Uses Windows native OCR (winocr) to locate any text, button, or link on screen.
+        Supports exact substring matching and fuzzy word-level matching.
+        """
+        if not winocr:
+            return None
+
+        img, img_path = self.capture_screen()
+        if not os.path.exists(img_path):
+            return None
+
+        try:
+            pil_img = Image.open(img_path)
+            res = winocr.recognize_pil_sync(pil_img)
+            lines = res.get("lines", [])
+        except Exception as e:
+            print(f"[OCR Error] {e}")
+            return None
+
+        clean_target = target_text.lower().strip()
+        screen_w, screen_h = pyautogui.size()
+        img_w, img_h = pil_img.size
+        scale_x = screen_w / float(img_w)
+        scale_y = screen_h / float(img_h)
+
+        # 1. Exact substring match
+        for l in lines:
+            t = l.get("text", "").lower()
+            if clean_target in t and l.get("words"):
+                words = l["words"]
+                cx = sum((w["bounding_rect"]["x"] + w["bounding_rect"]["width"] / 2.0) for w in words) / len(words)
+                cy = sum((w["bounding_rect"]["y"] + w["bounding_rect"]["height"] / 2.0) for w in words) / len(words)
+                return {
+                    "text": l["text"],
+                    "x": int(cx * scale_x),
+                    "y": int(cy * scale_y),
+                    "confidence": 0.95,
+                    "descriptor": f"text '{l['text']}'"
+                }
+
+        # 2. Fuzzy word-level match
+        if fuzzy:
+            target_words = [w for w in clean_target.split() if len(w) > 2]
+            best_line = None
+            best_score = 0.0
+            for l in lines:
+                t = l.get("text", "").lower()
+                line_words = t.split()
+                score = 0.0
+                for tw in target_words:
+                    for lw in line_words:
+                        r = difflib.SequenceMatcher(None, tw, lw).ratio()
+                        if r > 0.72:
+                            score += r
+                if score > best_score:
+                    best_score = score
+                    best_line = l
+
+            if best_line and best_score >= 0.72 and best_line.get("words"):
+                words = best_line["words"]
+                cx = sum((w["bounding_rect"]["x"] + w["bounding_rect"]["width"] / 2.0) for w in words) / len(words)
+                cy = sum((w["bounding_rect"]["y"] + w["bounding_rect"]["height"] / 2.0) for w in words) / len(words)
+                return {
+                    "text": best_line["text"],
+                    "x": int(cx * scale_x),
+                    "y": int(cy * scale_y),
+                    "confidence": round(min(0.95, float(best_score)), 2),
+                    "descriptor": f"text '{best_line['text']}'"
+                }
+
+        return None
+
+    def find_video_cards_on_screen(self, query: Optional[str] = None, ordinal: int = 1) -> Optional[Dict]:
+        """
+        Locates video cards, titles, and thumbnails on Google Search, YouTube, or web video players:
+        - If query is provided, fuzzy matches video titles (e.g. 'anabella movie', 'horror stories').
+        - If generic ('video here', 'first video'), identifies video card structures and selects ordinal N.
+        """
+        if not winocr:
+            return None
+
+        img, img_path = self.capture_screen()
+        if not os.path.exists(img_path):
+            return None
+
+        try:
+            pil_img = Image.open(img_path)
+            res = winocr.recognize_pil_sync(pil_img)
+            lines = res.get("lines", [])
+        except Exception as e:
+            print(f"[OCR Error] {e}")
+            return None
+
+        screen_w, screen_h = pyautogui.size()
+        img_w, img_h = pil_img.size
+        scale_x = screen_w / float(img_w)
+        scale_y = screen_h / float(img_h)
+
+        clean_query = (query or "").lower().strip()
+        for filler in ["this", "the", "video", "movie", "on", "click", "open", "play", "here"]:
+            clean_query = re.sub(rf'\b{filler}\b', '', clean_query).strip()
+
+        # 1. Title keyword matching if specific query provided
+        if clean_query:
+            target_words = [w for w in clean_query.split() if len(w) > 2]
+            best_line = None
+            best_score = 0.0
+            for l in lines:
+                t = l.get("text", "").lower()
+                if clean_query in t and l.get("words"):
+                    best_line = l
+                    best_score = 1.0
+                    break
+                line_words = t.split()
+                score = 0.0
+                for tw in target_words:
+                    for lw in line_words:
+                        r = difflib.SequenceMatcher(None, tw, lw).ratio()
+                        if r > 0.72:
+                            score += r
+                if score > best_score:
+                    best_score = score
+                    best_line = l
+
+            if best_line and (best_score >= 0.72 or clean_query in best_line.get("text", "").lower()) and best_line.get("words"):
+                words = best_line["words"]
+                cx = sum((w["bounding_rect"]["x"] + w["bounding_rect"]["width"] / 2.0) for w in words) / len(words)
+                cy = sum((w["bounding_rect"]["y"] + w["bounding_rect"]["height"] / 2.0) for w in words) / len(words)
+                return {
+                    "title": best_line["text"],
+                    "x": int(cx * scale_x),
+                    "y": int(cy * scale_y),
+                    "confidence": round(min(0.95, float(best_score)), 2),
+                    "descriptor": f"video '{best_line['text']}'"
+                }
+
+        # 2. Generic video card discovery (Google Search 'Videos' or YouTube results)
+        video_candidates = []
+        in_video_sec = False
+        for l in lines:
+            t = l.get("text", "").lower()
+            if "videos" in t:
+                in_video_sec = True
+                continue
+            if in_video_sec:
+                if any(term in t for term in ["view all", "tools", "more", "search"]):
+                    break
+                # Video titles typically have 3+ words and are not metadata tags
+                if len(t.split()) >= 3 and not any(tag in t for tag in ["ago", "month", "year", "week", "views", "duration"]):
+                    if l.get("words"):
+                        words = l["words"]
+                        cx = sum((w["bounding_rect"]["x"] + w["bounding_rect"]["width"] / 2.0) for w in words) / len(words)
+                        cy = sum((w["bounding_rect"]["y"] + w["bounding_rect"]["height"] / 2.0) for w in words) / len(words)
+                        video_candidates.append({
+                            "title": l["text"],
+                            "x": int(cx * scale_x),
+                            "y": int(cy * scale_y),
+                            "confidence": 0.88,
+                            "descriptor": f"video '{l['text']}'"
+                        })
+
+        # Also search for lines containing YouTube or duration patterns
+        if not video_candidates:
+            for i, l in enumerate(lines):
+                t = l.get("text", "").lower()
+                if "youtube" in t or re.search(r'\b\d{1,2}:\d{2}\b', t):
+                    # Pick previous or next line as title candidate
+                    idx = max(0, i - 1)
+                    cand = lines[idx]
+                    if cand.get("words"):
+                        words = cand["words"]
+                        cx = sum((w["bounding_rect"]["x"] + w["bounding_rect"]["width"] / 2.0) for w in words) / len(words)
+                        cy = sum((w["bounding_rect"]["y"] + w["bounding_rect"]["height"] / 2.0) for w in words) / len(words)
+                        video_candidates.append({
+                            "title": cand["text"],
+                            "x": int(cx * scale_x),
+                            "y": int(cy * scale_y),
+                            "confidence": 0.80,
+                            "descriptor": f"video '{cand['text']}'"
+                        })
+
+        if video_candidates:
+            chosen_idx = max(0, min(ordinal - 1, len(video_candidates) - 1))
+            return video_candidates[chosen_idx]
+
+        return None
+
+    def click_text(self, target_text: str) -> Dict:
+        """Finds text on screen via OCR and clicks it."""
+        target = self.find_text_on_screen(target_text)
+        if target:
+            res = self.click_coordinate(target["x"], target["y"])
+            res["target"] = target
+            return res
+        return {"status": "not_found", "target_text": target_text}
+
+    def click_video(self, query: Optional[str] = None, ordinal: int = 1) -> Dict:
+        """Finds video on screen via visual perception / OCR and clicks it."""
+        target = self.find_video_cards_on_screen(query, ordinal=ordinal)
+        if target:
+            res = self.click_coordinate(target["x"], target["y"])
+            res["target"] = target
+            return res
+        return {"status": "not_found", "query": query}
+
     def execute_visual_instruction(self, instruction: str) -> str:
         """
         High-level dispatcher for visual computer use commands:
         - 'click the small settings icon in the upper-right corner'
         - 'click the red circular button below the video'
         - 'open the third icon from the left'
+        - 'open the video here' / 'click on this video' / 'click on this anabella movie'
         """
         clean = instruction.lower().strip()
+
+        # Case 0: Video click / open
+        if any(w in clean for w in ["video", "movie", "play"]):
+            ordinal = 1
+            if "second" in clean or "2nd" in clean:
+                ordinal = 2
+            elif "third" in clean or "3rd" in clean:
+                ordinal = 3
+
+            # Check if specific title requested
+            m_target = re.search(r'(?:click\s+(?:on\s+)?(?:this\s+)?|open\s+(?:this\s+)?|play\s+(?:this\s+)?)(.+)', clean)
+            query = m_target.group(1).strip() if m_target else None
+            res = self.click_video(query=query, ordinal=ordinal)
+            if res.get("status") == "success":
+                title = res.get("target", {}).get("title", "video")
+                return f"Visually located video '{title}' at ({res['x']}, {res['y']}) and clicked. Visual change verified: {res['state_changed']}."
 
         # Case 1: Color / Shape button
         m_color = re.search(r'(red|blue|green|yellow)\s+(circular|round|square)?\s*(?:button|icon)?', clean)
@@ -379,9 +608,19 @@ class VisualComputerUse:
                 return f"Visually located {target['descriptor']} at ({target['x']}, {target['y']}) [conf: {target['confidence']}] and clicked. Visual change verified: {res['state_changed']}."
 
         # Case 2: Spatial icon (upper right, 3rd from left, etc.)
-        target = self.find_icon_by_spatial_description(clean)
-        if target:
-            res = self.click_coordinate(target["x"], target["y"])
-            return f"Visually located target at ({target['x']}, {target['y']}) [conf: {target['confidence']}] and clicked. Visual change verified: {res['state_changed']}."
+        if any(w in clean for w in ["icon", "corner", "upper", "lower", "top", "bottom"]):
+            target = self.find_icon_by_spatial_description(clean)
+            if target:
+                res = self.click_coordinate(target["x"], target["y"])
+                return f"Visually located target at ({target['x']}, {target['y']}) [conf: {target['confidence']}] and clicked. Visual change verified: {res['state_changed']}."
+
+        # Case 3: Arbitrary visible text click
+        m_click_text = re.search(r'^(?:click|tap)(?:\s+on)?(?:\s+the)?\s+(.+)', clean)
+        if m_click_text:
+            raw_text = m_click_text.group(1).strip()
+            res = self.click_text(raw_text)
+            if res.get("status") == "success":
+                found_text = res.get("target", {}).get("text", raw_text)
+                return f"Visually located text '{found_text}' at ({res['x']}, {res['y']}) and clicked. Visual change verified: {res['state_changed']}."
 
         return "Could not identify unambiguous visual target on screen. Please specify coordinate or region."
