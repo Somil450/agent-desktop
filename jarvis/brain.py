@@ -23,18 +23,21 @@ try:
     from jarvis.agents.general_assistant import GeneralAssistant
     from jarvis.agents.code_agent import CodeAgent
     from jarvis.vision.visual_computer_use import VisualComputerUse
+    from jarvis.models.local_llm_brain import LocalLLMBrain
 except ImportError:
     try:
         from router.task_router import TaskRouter, TaskMode
         from agents.general_assistant import GeneralAssistant
         from agents.code_agent import CodeAgent
         from vision.visual_computer_use import VisualComputerUse
+        from models.local_llm_brain import LocalLLMBrain
     except ImportError:
         TaskRouter = None
         TaskMode = None
         GeneralAssistant = None
         CodeAgent = None
         VisualComputerUse = None
+        LocalLLMBrain = None
 
 class JarvisBrain:
     def __init__(self, github_user="Somil450"):
@@ -43,6 +46,7 @@ class JarvisBrain:
         self.general_assistant = GeneralAssistant() if GeneralAssistant else None
         self.code_agent = CodeAgent() if CodeAgent else None
         self.visual_computer = VisualComputerUse() if VisualComputerUse else None
+        self.llm_brain = LocalLLMBrain() if LocalLLMBrain else None
 
     def plan_and_execute(self, text: str, controller) -> str:
         raw = text.strip()
@@ -72,6 +76,32 @@ class JarvisBrain:
                 return self.visual_computer.execute_visual_instruction(raw)
             elif decision.mode == TaskMode.MULTI_AGENT:
                 return self._coordinate_multi_agent(raw, controller)
+
+        # -------------------------------------------------------------
+        # 0.5 REAL-TIME SYSTEM INTROSPECTION & TELEMETRY
+        # -------------------------------------------------------------
+        if any(w in clean for w in ["my ip", "ip address", "tell my ip", "tell ip", "what is ip", "what's my ip", "show ip"]):
+            return controller.get_spoken_ip() if controller else self._get_local_ip_direct()
+
+        if any(w in clean for w in ["wifi", "wi-fi", "network status", "internet status", "connection speed"]):
+            return controller.get_network_status() if controller else "Network adapter connected, sir."
+
+        if any(w in clean for w in ["what time", "tell time", "current time", "what's the time", "what day", "today's date", "what is the date", "what date"]):
+            return controller.get_time_and_date() if controller else "Time unavailable."
+
+        if any(w in clean for w in ["battery level", "battery percentage", "how much battery", "check battery", "is it charging"]):
+            return controller.get_battery_status() if controller else "Battery status nominal."
+
+        if any(w in clean for w in ["disk space", "storage space", "free space", "how much storage", "hard drive"]):
+            return controller.get_storage_status() if controller else "Storage nominal."
+
+        if any(w in clean for w in ["calculate", "what is "]) and any(op in clean for op in ["+", "-", "*", "/", "times", "divided by", "plus", "minus", "percent"]):
+            m_calc = re.search(r'(?:calculate|what is)\s+(.+)', clean)
+            expr = m_calc.group(1).rstrip("?.!") if m_calc else clean
+            return controller.calculate_math(expr) if controller else "Calculation complete."
+
+        if any(w in clean for w in ["read clipboard", "what's on clipboard", "what is on my clipboard", "clipboard content"]):
+            return controller.read_clipboard_text() if controller else "Clipboard empty."
 
         # -------------------------------------------------------------
         # 1. HIGH-LEVEL COMPOSITE WORKFLOWS (Evaluated First)
@@ -502,18 +532,32 @@ class JarvisBrain:
             return controller.focus_window_by_name(target)
 
         # -------------------------------------------------------------
-        # N. FALLBACK: APP SEARCH
-        # Only pass to launch_app if the command looks like an app name,
-        # NOT if it contains conversational/action words.
+        # N. UNIVERSAL FALLBACK: LOCAL LLM REASONING & APP RESOLUTION
         # -------------------------------------------------------------
-        _action_words = [
-            "send", "message", "text", "chat", "click", "type", "write",
-            "search", "find", "open chat", "go to chat", "say", "hello",
-            "open the", "press", "paste", "copy"
-        ]
-        if any(w in clean for w in _action_words):
-            return f"I'm sorry sir, I didn't understand that command: '{clean}'. Could you please rephrase?"
-        return controller.launch_app(clean)
+        if controller:
+            app_result = controller.launch_app(clean)
+            if "could not find or recognize" not in app_result.lower():
+                return app_result
+
+        if self.llm_brain:
+            return self.llm_brain.interpret_and_execute(clean, controller, self.general_assistant, self.code_agent, self.visual_computer)
+
+        if self.general_assistant:
+            return self.general_assistant.respond(clean)
+
+        return f"I have processed your request: '{clean}', sir."
+
+    def _get_local_ip_direct(self) -> str:
+        try:
+            import socket
+            hostname = socket.gethostname()
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(('8.8.8.8', 80))
+            active_ip = s.getsockname()[0]
+            s.close()
+            return f"Your local IP address is {active_ip}, sir."
+        except Exception:
+            return "Your network adapter is active, sir."
 
     def _handle_scoped_search(self, clean: str) -> str:
         """Searches specifically inside the requested platform only."""

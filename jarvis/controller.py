@@ -8,6 +8,9 @@ git repository cloning, and UI accessibility actions.
 
 import os
 import io
+import re
+import socket
+import datetime
 import json
 import time
 import struct
@@ -854,3 +857,108 @@ class SystemController:
             f"Battery is at {stats['battery']}. "
             f"You have {stats['open_windows_count']} top-level windows active."
         )
+
+    def get_ip_info(self) -> dict:
+        """Retrieves local IPv4, active interface IP, and public IPv4."""
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(('8.8.8.8', 80))
+            active_ip = s.getsockname()[0]
+            s.close()
+        except Exception:
+            active_ip = local_ip
+
+        public_ip = "Unavailable"
+        try:
+            import urllib.request
+            req = urllib.request.Request('https://api.ipify.org?format=json', headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
+                public_ip = json.loads(resp.read().decode())['ip']
+        except Exception:
+            pass
+
+        return {
+            "hostname": hostname,
+            "local_ip": active_ip,
+            "public_ip": public_ip
+        }
+
+    def get_spoken_ip(self) -> str:
+        """Returns conversational response with user IP address."""
+        info = self.get_ip_info()
+        loc = info["local_ip"]
+        pub = info["public_ip"]
+        if pub != "Unavailable":
+            return f"Your local IP address is {loc}, and your public IP address is {pub}, sir."
+        return f"Your local IP address is {loc}, sir."
+
+    def get_network_status(self) -> str:
+        """Returns Wi-Fi SSID, signal strength, and IP details."""
+        ip_info = self.get_ip_info()
+        ssid = "Unknown"
+        signal = "N/A"
+        try:
+            out = subprocess.check_output(['netsh', 'wlan', 'show', 'interfaces'], text=True, stderr=subprocess.DEVNULL)
+            m_ssid = re.search(r'^\s*SSID\s*:\s*(.+)$', out, re.M)
+            m_sig = re.search(r'^\s*Signal\s*:\s*(.+)$', out, re.M)
+            if m_ssid:
+                ssid = m_ssid.group(1).strip()
+            if m_sig:
+                signal = m_sig.group(1).strip()
+        except Exception:
+            pass
+
+        return (
+            f"Network status for {ip_info['hostname']}: "
+            f"Local IP is {ip_info['local_ip']}, Public IP is {ip_info['public_ip']}. "
+            f"Wi-Fi network is '{ssid}' with {signal} signal strength, sir."
+        )
+
+    def get_time_and_date(self) -> str:
+        """Returns current system time and formatted date."""
+        now = datetime.datetime.now()
+        t = now.strftime('%I:%M %p')
+        d = now.strftime('%A, %B %d, %Y')
+        return f"It is currently {t} on {d}, sir."
+
+    def get_battery_status(self) -> str:
+        """Returns exact battery percentage and charging state."""
+        battery = psutil.sensors_battery()
+        if not battery:
+            return "No battery detected; the system is running on desktop AC power, sir."
+        state = "currently charging" if battery.power_plugged else "discharging on battery power"
+        return f"Your battery is at {battery.percent} percent and {state}, sir."
+
+    def get_storage_status(self) -> str:
+        """Returns free and total disk space on drive C:."""
+        usage = psutil.disk_usage('C:\\')
+        free_gb = round(usage.free / (1024**3), 1)
+        total_gb = round(usage.total / (1024**3), 1)
+        percent_free = round(100.0 - usage.percent, 1)
+        return f"System drive C has {free_gb} gigabytes free out of {total_gb} gigabytes ({percent_free}% available), sir."
+
+    def calculate_math(self, expression: str) -> str:
+        """Safely calculates mathematical expression."""
+        import math
+        clean_expr = expression.lower().replace("times", "*").replace("x", "*").replace("divided by", "/").replace("plus", "+").replace("minus", "-").replace("percent of", "* 0.01 *")
+        clean_expr = re.sub(r'[^0-9\+\-\*\/\(\)\.\s]', '', clean_expr)
+        try:
+            allowed = {k: getattr(math, k) for k in dir(math) if not k.startswith("_")}
+            result = eval(clean_expr, {"__builtins__": {}}, allowed)
+            return f"The result is {result}, sir."
+        except Exception as e:
+            return f"Could not compute that mathematical expression: {e}"
+
+    def read_clipboard_text(self) -> str:
+        """Reads current text on the Windows clipboard."""
+        try:
+            text = pyperclip.paste()
+            if text:
+                preview = text[:200]
+                return f"Clipboard contents: {preview}"
+            return "The clipboard is currently empty, sir."
+        except Exception as e:
+            return f"Could not read clipboard: {e}"
+

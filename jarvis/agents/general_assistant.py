@@ -19,7 +19,41 @@ class GeneralAssistant:
     def respond(self, instruction: str) -> str:
         clean = instruction.lower().strip()
 
-        # 1. Essay Generation Request
+        # 1. System Introspection & Telemetry (IP, Time, Battery)
+        if any(w in clean for w in ["my ip", "ip address", "tell my ip", "what's my ip"]):
+            try:
+                import socket
+                hostname = socket.gethostname()
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(('8.8.8.8', 80))
+                active_ip = s.getsockname()[0]
+                s.close()
+                return f"Your local IP address is {active_ip}, sir."
+            except Exception:
+                return "Your network adapter is active, sir."
+
+        if any(w in clean for w in ["what time", "tell time", "current time", "what day", "what is the date"]):
+            import datetime
+            now = datetime.datetime.now()
+            return f"It is currently {now.strftime('%I:%M %p on %A, %B %d, %Y')}, sir."
+
+        # 1.5 Direct Mathematical Evaluation
+        if any(w in clean for w in ["calculate", "what is ", "solve "]) and any(op in clean for op in ["+", "-", "*", "/", "times", "divided by", "plus", "minus", "percent"]):
+            m_calc = re.search(r'(?:calculate|what is|solve)\s+(.+)', clean)
+            expr = m_calc.group(1).rstrip("?.!") if m_calc else clean
+            import math
+            clean_expr = expr.replace("times", "*").replace("x", "*").replace("divided by", "/").replace("plus", "+").replace("minus", "-").replace("percent of", "* 0.01 *")
+            clean_expr = re.sub(r'[^0-9\+\-\*\/\(\)\.\s]', '', clean_expr)
+            try:
+                allowed = {k: getattr(math, k) for k in dir(math) if not k.startswith("_")}
+                ans = eval(clean_expr, {"__builtins__": {}}, allowed)
+                response = f"The answer is {ans}, sir."
+                self._record_turn(instruction, response)
+                return response
+            except Exception:
+                pass
+
+        # 2. Essay Generation Request
         m_essay = re.search(r'(?:write|compose|generate)\s+(?:a|an)?\s*(?:(\d+)[- ]word\s+)?(?:essay|article|composition)\s+(?:on|about)\s+(.+)', clean)
         if m_essay or ("essay" in clean and any(w in clean for w in ["write", "generate"])):
             target_words = int(m_essay.group(1)) if (m_essay and m_essay.group(1)) else 500
@@ -131,9 +165,41 @@ class GeneralAssistant:
         )
 
     def _conversational_response(self, text: str) -> str:
+        clean = text.lower().strip()
+        if any(w in clean for w in ["who are you", "what is your name", "introduce yourself"]):
+            return (
+                "I am J.A.R.V.I.S. (Just A Rather Very Intelligent System), your offline-first autonomous desktop AI assistant. "
+                "I am equipped with multi-modal reasoning, software engineering capabilities across Python, Rust, and React, "
+                "full Windows desktop automation (WhatsApp, Gmail, File Explorer, Terminal), real-time system introspection, and visual GUI perception."
+            )
+
+        if any(w in clean for w in ["what can you do", "help me", "capabilities", "what are your skills"]):
+            return (
+                "Here are my core capabilities, sir:\n"
+                "1. System Introspection: Ask 'tell my ip', 'check my wifi', 'how much battery is left', or 'what time is it'.\n"
+                "2. Desktop Automation: Ask to send WhatsApp messages, compose emails, manage files, or open applications.\n"
+                "3. Autonomous Coding: Scaffolding projects (e.g. YOLO detector), inspecting project syntax, and safe file refactoring.\n"
+                "4. Visual Computer-Use: Finding unlabeled buttons, color/shape icons, and spatial clicks.\n"
+                "5. General Knowledge & Reasoning: Writing essays, explaining science and math, and philosophical analysis."
+            )
+
+        if any(w in clean for w in ["joke", "make me laugh"]):
+            jokes = [
+                "Why do programmers prefer dark mode? Because light attracts bugs, sir.",
+                "There are 10 types of people in the world: those who understand binary, and those who don't.",
+                "A SQL query walks into a bar, walks up to two tables and asks: 'Can I join you?'"
+            ]
+            import random
+            return random.choice(jokes)
+
+        if any(w in clean for w in ["how are you", "how are you doing", "are you okay"]):
+            return "All diagnostic parameters are within optimal operational bounds, sir. How may I assist you today?"
+
+        if any(w in clean for w in ["thank you", "thanks", "good job", "great work"]):
+            return "Always at your service, sir."
+
         return (
-            f"Indeed, sir. Regarding '{text}', this presents an intriguing domain of inquiry. "
-            "Whether evaluated from practical implementation principles or theoretical foundations, "
-            "balancing rigorous analytical reasoning with empirical testing yields the most robust outcome."
+            f"Understood, sir. Regarding '{text}', all systems are active and prepared. "
+            "You can ask me to inspect code, automate desktop workflows, query system telemetry, or generate technical content."
         )
 
