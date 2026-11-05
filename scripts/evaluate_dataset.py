@@ -37,13 +37,15 @@ for p in [REPO_ROOT, REPO_ROOT / "jarvis", REPO_ROOT.parent, REPO_ROOT.parent / 
     if p_str not in sys.path:
         sys.path.insert(0, p_str)
 
-# Import JarvisBrain supporting both package and direct module imports
+# Import JarvisBrain supporting both package and dynamic fallback imports
 try:
     from jarvis.brain import JarvisBrain
 except ImportError:
+    import importlib
     try:
-        from brain import JarvisBrain
-    except ImportError:
+        brain_module = importlib.import_module("brain")
+        JarvisBrain = getattr(brain_module, "JarvisBrain", None)
+    except Exception:
         JarvisBrain = None
 
 class MockController:

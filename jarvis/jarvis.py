@@ -14,13 +14,22 @@ from rich.live import Live
 # Ensure module path resolution works from any working directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from voice import JarvisVoice
-from controller import SystemController
-from listener import VoiceListener
-from monitor import JarvisHUD
-from brain import JarvisBrain
-from learning.experience_recorder import ExperienceRecorder
-from retrieval.dataset_retriever import DatasetRetriever
+try:
+    from jarvis.voice import JarvisVoice
+    from jarvis.controller import SystemController
+    from jarvis.listener import VoiceListener
+    from jarvis.monitor import JarvisHUD
+    from jarvis.brain import JarvisBrain
+    from jarvis.learning.experience_recorder import ExperienceRecorder
+    from jarvis.retrieval.dataset_retriever import DatasetRetriever
+except ImportError:
+    from voice import JarvisVoice
+    from controller import SystemController
+    from listener import VoiceListener
+    from monitor import JarvisHUD
+    from brain import JarvisBrain
+    from learning.experience_recorder import ExperienceRecorder
+    from retrieval.dataset_retriever import DatasetRetriever
 
 WAKE_WORDS = ["jarvis", "hey jarvis", "ok jarvis", "hello jarvis", "hi jarvis", "yo jarvis"]
 
